@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0c0b09">
+<meta name="description" content="Rokumon Merge — slide matching metals into blades. A forge puzzle from Rokumon Games.">
+<title>Rokumon Merge</title>
+<style>
+  :root {
+    --bg: #0c0b09;
+    --ivory: #f4ead8;
+    --muted: #a39888;
+    --gold: #e0b15a;
+    --copper: #d4653a;
+    --line: #3a3228;
+    --surface: #16130f;
+    --ink: #1a140c;
+    --gap: 8px;
+    --sans: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
+    --display: "Iowan Old Style", Palatino, "Palatino Linotype", "Times New Roman", serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    color: var(--ivory);
+    font-family: var(--sans);
+    background:
+      radial-gradient(ellipse 70% 42% at 50% 18%, rgba(212, 101, 58, 0.16), transparent 60%),
+      var(--bg);
+    overscroll-behavior: none;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.045;
+    background-image: radial-gradient(circle, var(--ivory) 0.7px, transparent 0.8px);
+    background-size: 16px 16px;
+  }
+  button { font-family: inherit; cursor: pointer; }
+  button:disabled { cursor: default; opacity: 0.42; }
+  button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .app {
+    width: min(520px, 100%);
+    margin: 0 auto;
+    min-height: 100%;
+    padding: max(14px, env(safe-area-inset-top)) 16px max(18px, env(safe-area-inset-bottom));
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+  }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .seal { width: 42px; height: 42px; color: var(--gold); flex: none; }
+  .kicker {
+    margin: 0;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+  h1 {
+    margin: 1px 0 0;
+    font-family: var(--display);
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .tools { display: flex; gap: 8px; }
+  .iconbtn {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ivory);
+    display: grid;
+    place-items: center;
+    padding: 0;
+  }
+  .iconbtn[aria-pressed="false"] { color: var(--muted); }
+  .iconbtn svg { width: 22px; height: 22px; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr 1.15fr; gap: 8px; }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 8px 10px 10px;
+    min-width: 0;
+  }
+  .stat span, .eyebrow {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .stat b {
+    display: block;
+    margin-top: 2px;
+    font-family: var(--display);
+    font-size: 26px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .stat-next { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .stat-next b { font-size: 18px; }
+  .modes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 4px;
+    background: #100e0c;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+  }
+  .modes button {
+    height: 40px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 650;
+    letter-spacing: 0.04em;
+  }
+  .modes button[aria-pressed="true"] { background: #2a241c; color: var(--gold); }
+  .hint, .highline, .keys {
+    margin: 0;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .highline { color: var(--ivory); }
+  .highline strong { color: var(--gold); font-weight: 650; }
+  .keys { display: none; font-size: 12px; }
+  .board-wrap { display: grid; place-items: center; }
+  .board {
+    width: min(100%, 460px);
+    aspect-ratio: 1;
+    padding: 10px;
+    border-radius: 20px;
+    background: #221c16;
+    border: 1px solid #4a3d2e;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.45), 0 18px 40px rgba(0, 0, 0, 0.35);
+    touch-action: none;
+    user-select: none;
+  }
+  .board.hot { box-shadow: inset 0 0 0 1px rgba(224, 177, 90, 0.45), 0 18px 40px rgba(0, 0, 0, 0.35); }
+  .play { position: relative; width: 100%; height: 100%; }
+  .cells, .tiles { position: absolute; inset: 0; }
+  .cells { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--gap); }
+  .cell { border-radius: 12px; background: #100e0c; box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5); }
+  .tile {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: calc((100% - 3 * var(--gap)) / 4);
+    height: calc((100% - 3 * var(--gap)) / 4);
+    transform: translate(calc(var(--x) * (100% + var(--gap))), calc(var(--y) * (100% + var(--gap))));
+    transition: transform 145ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  .tiles.no-anim .tile { transition: none; }
+  .face, .mini {
+    background:
+      radial-gradient(120% 80% at 28% 16%, rgba(255, 255, 255, 0.18), transparent 46%),
+      linear-gradient(165deg, var(--hi), var(--lo));
+    color: var(--inkc);
+    box-shadow: inset 0 0 0 1px var(--edge), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  }
+  .face {
+    height: 100%;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    container-type: size;
+  }
+  .face svg { width: 54%; height: 48%; }
+  .face b {
+    margin-top: 1px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    line-height: 1;
+    max-width: 94%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .face em {
+    position: absolute;
+    top: 4px;
+    left: 6px;
+    font-style: normal;
+    font-size: 9px;
+    font-weight: 700;
+    opacity: 0.72;
+    font-variant-numeric: tabular-nums;
+  }
+  @container (max-height: 62px) {
+    .face b, .face em { display: none; }
+    .face svg { width: 68%; height: 68%; }
+  }
+  .mini {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    flex: none;
+  }
+  .mini svg { width: 68%; height: 68%; }
+  [data-rank="1"] { --hi: #514a43; --lo: #3a342e; --inkc: #f3e6d6; --edge: #6b6258; }
+  [data-rank="2"] { --hi: #8a4828; --lo: #6a341f; --inkc: #ffd7c2; --edge: #c47a52; }
+  [data-rank="3"] { --hi: #6a3438; --lo: #4a2428; --inkc: #ffd0c8; --edge: #a85a52; }
+  [data-rank="4"] { --hi: #a45a30; --lo: #7a3e22; --inkc: #ffe0b8; --edge: #e09a55; }
+  [data-rank="5"] { --hi: #8f6d32; --lo: #6e5324; --inkc: #ffe8c2; --edge: #d4b072; }
+  [data-rank="6"] { --hi: #4d565e; --lo: #3a4148; --inkc: #e6eef4; --edge: #8aa0b0; }
+  [data-rank="7"] { --hi: #34506c; --lo: #24364c; --inkc: #e4eef8; --edge: #7f9cbc; }
+  [data-rank="8"] { --hi: #2c4666; --lo: #1e3048; --inkc: #d5e4f5; --edge: #6e8eb0; }
+  [data-rank="9"] { --hi: #6e5628; --lo: #4c3c1c; --inkc: #fff1cc; --edge: #e0b15a; }
+  [data-rank="10"] { --hi: #7c3828; --lo: #5c261c; --inkc: #ffe1d2; --edge: #e07858; }
+  [data-rank="11"] { --hi: #3d3468; --lo: #2a2448; --inkc: #f0e8ff; --edge: #b0a0e0; }
+  [data-rank="12"] { --hi: #6a5420; --lo: #3d3014; --inkc: #fff8e4; --edge: #f0d78a; }
+  .tile.is-new .face, .tile.is-merge .face { animation: pop 0.2s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .tile.is-merge .face { animation-duration: 0.26s; }
+  @keyframes pop {
+    0% { transform: scale(0.55); }
+    60% { transform: scale(1.08); }
+    100% { transform: scale(1); }
+  }
+  .floater {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: calc((100% - 3 * var(--gap)) / 4);
+    height: calc((100% - 3 * var(--gap)) / 4);
+    transform: translate(calc(var(--x) * (100% + var(--gap))), calc(var(--y) * (100% + var(--gap))));
+    display: grid;
+    place-items: center;
+    color: var(--gold);
+    font-family: var(--display);
+    font-size: 20px;
+    pointer-events: none;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
+    animation: floatup 0.62s ease forwards;
+    z-index: 4;
+  }
+  @keyframes floatup {
+    to {
+      opacity: 0;
+      transform: translate(calc(var(--x) * (100% + var(--gap))), calc(var(--y) * (100% + var(--gap)) - 26px));
+    }
+  }
+  .board.shake { animation: shake 0.18s linear; }
+  @keyframes shake {
+    25% { transform: translateX(-3px); }
+    75% { transform: translateX(3px); }
+  }
+  .ladder {
+    display: flex;
+    gap: 4px;
+    width: min(100%, 460px);
+    margin: 0 auto;
+  }
+  .ladder i { flex: 1; height: 5px; border-radius: 99px; background: #2a241c; }
+  .ladder i.on { background: #8a6a32; }
+  .ladder i.now { background: var(--gold); }
+  .ladder i.open { background: #f0d78a; box-shadow: 0 0 8px rgba(224, 177, 90, 0.75); }
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .actions button, .sheet button {
+    height: 48px;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .ghost, .sheet .ghost {
+    background: transparent;
+    color: var(--ivory);
+    border: 1px solid var(--line);
+  }
+  .primary {
+    background: var(--gold);
+    color: var(--ink);
+    border: 0;
+  }
+  .danger {
+    background: transparent;
+    color: #f0c2b0;
+    border: 1px solid #6a3a2c;
+  }
+  .overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: rgba(8, 7, 6, 0.72);
+    display: grid;
+    place-items: end center;
+    padding: 12px;
+  }
+  .overlay[hidden] { display: none; }
+  .sheet {
+    width: min(460px, 100%);
+    max-height: min(82dvh, 680px);
+    overflow: auto;
+    background: #16130f;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 20px 18px 16px;
+  }
+  .sheet h2 {
+    margin: 4px 0 8px;
+    font-family: var(--display);
+    font-size: 32px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .sheet p, .sheet li { color: var(--ivory); line-height: 1.45; font-size: 15px; }
+  .sheet ol { margin: 8px 0 12px; padding-left: 18px; }
+  .sheet li + li { margin-top: 6px; }
+  .samples { display: flex; justify-content: space-between; gap: 8px; margin: 12px 0; }
+  .samples figure { margin: 0; text-align: center; flex: 1; }
+  .samples .mini { width: 56px; height: 56px; margin: 0 auto; }
+  .samples figcaption {
+    margin-top: 6px;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .sheet .stack { display: grid; gap: 8px; margin-top: 12px; }
+  .record {
+    display: inline-block;
+    margin: 0 0 8px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(224, 177, 90, 0.16);
+    color: var(--gold);
+    letter-spacing: 0.14em;
+    font-size: 11px;
+    text-transform: uppercase;
+  }
+  .share-preview, .fallback {
+    margin: 8px 0 0;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: #100e0c;
+    color: var(--ivory);
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.45;
+    white-space: pre;
+    overflow: auto;
+  }
+  .fallback:focus { outline: 2px solid var(--gold); }
+  .toast {
+    position: fixed;
+    z-index: 30;
+    top: max(16px, env(safe-area-inset-top));
+    left: 50%;
+    transform: translateX(-50%);
+    background: #2a2418;
+    color: var(--gold);
+    border: 1px solid var(--gold);
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-size: 14px;
+    letter-spacing: 0.04em;
+  }
+  .toast[hidden] { display: none; }
+  .live {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  @media (min-width: 800px) and (hover: hover) {
+    .keys { display: block; }
+    .overlay { place-items: center; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tile, .floater, .face, .board.shake { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <div class="brand">
+        <svg class="seal" viewBox="0 0 64 64" aria-hidden="true">
+          <g fill="currentColor" transform="translate(32 32)">
+            <ellipse cx="0" cy="-14" rx="8" ry="13"/>
+            <ellipse cx="0" cy="-14" rx="8" ry="13" transform="rotate(60)"/>
+            <ellipse cx="0" cy="-14" rx="8" ry="13" transform="rotate(120)"/>
+            <ellipse cx="0" cy="-14" rx="8" ry="13" transform="rotate(180)"/>
+            <ellipse cx="0" cy="-14" rx="8" ry="13" transform="rotate(240)"/>
+            <ellipse cx="0" cy="-14" rx="8" ry="13" transform="rotate(300)"/>
+          </g>
+          <circle cx="32" cy="32" r="8" fill="#0c0b09"/>
+          <circle cx="32" cy="32" r="4.2" fill="#d4653a"/>
+        </svg>
+        <div>
+          <p class="kicker">Rokumon</p>
+          <h1>Merge</h1>
+        </div>
+      </div>
+      <div class="tools">
+        <button class="iconbtn" id="sound" type="button" aria-pressed="true" aria-label="Sound on">
+          <svg id="sound-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></svg>
+        </button>
+        <button class="iconbtn" id="info" type="button" aria-label="How to play">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5h.01"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <section class="stats" aria-label="Score">
+      <article class="stat"><span>Score</span><b id="score">0</b></article>
+      <article class="stat"><span id="best-label">Best</span><b id="best">0</b></article>
+      <article class="stat stat-next"><div><span>Next</span><b id="next-name">Spark</b></div><div class="mini" id="next-tile" data-rank="1"></div></article>
+    </section>
+
+    <div class="modes" role="group" aria-label="Mode">
+      <button type="button" id="mode-free" aria-pressed="true">Free</button>
+      <button type="button" id="mode-daily" aria-pressed="false">Daily</button>
+    </div>
+    <p class="hint" id="hint"></p>
+
+    <div class="board-wrap">
+      <div class="board" id="board">
+        <div class="play" id="play">
+          <div class="cells" id="cells"></div>
+          <div class="tiles" id="tiles"></div>
+        </div>
+      </div>
+    </div>
+    <div class="ladder" id="ladder" aria-hidden="true"></div>
+    <p class="highline" id="highline"></p>
+    <div class="actions">
+      <button class="ghost" type="button" id="undo">Undo · 3</button>
+      <button class="ghost" type="button" id="anew">New forge</button>
+    </div>
+    <p class="keys">Arrow keys or WASD · swipe the board</p>
+  </div>
+
+  <div class="overlay" id="how" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="how-title">
+      <p class="eyebrow">How to forge</p>
+      <h2 id="how-title">Slide. Match. Temper.</h2>
+      <div class="samples" id="samples"></div>
+      <ol>
+        <li>Swipe, or press an arrow key. Every tile slides that way.</li>
+        <li>Two of the same metal become the next tier and score that tier’s value. A tile merges only once per move — four sparks make two embers, not a coal.</li>
+        <li>A new piece appears after each move. Next shows whether it will be a spark or, less often, an ember.</li>
+        <li>The Rokumon crest does not combine. The forge cools only when the board is full and nothing matches.</li>
+        <li>Daily uses today’s date as a shared seed, so everyone draws the same sparks. You get three undos a run.</li>
+      </ol>
+      <div class="stack">
+        <button class="primary" type="button" id="how-close">Begin the forge</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="result" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="result-label">
+      <p class="eyebrow" id="result-label">Forge cooled</p>
+      <p class="record" id="record" hidden>New best</p>
+      <h2 id="result-score">0</h2>
+      <p id="result-sub"></p>
+      <pre class="share-preview" id="share-preview"></pre>
+      <pre class="fallback" id="fallback" hidden tabindex="0"></pre>
+      <div class="stack">
+        <button class="primary" type="button" id="share">Share result</button>
+        <button class="ghost" type="button" id="result-undo">Undo last slide</button>
+        <button class="ghost" type="button" id="again">Forge again</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="confirm" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+      <h2 id="confirm-title">Abandon this forge?</h2>
+      <p id="confirm-text"></p>
+      <div class="stack">
+        <button class="primary" type="button" id="confirm-no">Keep forging</button>
+        <button class="danger" type="button" id="confirm-yes">Reset board</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="toast" id="toast" hidden role="status"></p>
+  <p class="live" id="live" aria-live="polite"></p>
+
+<script id="game">
+(function () {
+  "use strict";
+
+  var TIERS = [
+    { name: "Spark" }, { name: "Ember" }, { name: "Coal" }, { name: "Bloom" },
+    { name: "Ingot" }, { name: "Blank" }, { name: "Tanto" }, { name: "Wakizashi" },
+    { name: "Katana" }, { name: "Odachi" }, { name: "Spirit" }, { name: "Rokumon" }
+  ];
+  var MAX_RANK = 12;
+  var STORE = "rokumon-merge-v1";
+  var GLYPH = ["⬛", "🔴", "🟥", "🟧", "🟧", "🟨", "⬜", "🟦", "🟦", "🟨", "🟧", "🟪", "✨"];
+  var SCALE = [392, 440, 494, 523.25, 587.33, 659.25, 698.46, 783.99, 880, 987.77, 1046.5, 1174.66];
+
+  function valueOf(rank) { return 1 << rank; }
+
+  function crestSvg(withCore) {
+    var core = withCore
+      ? '<circle cx="32" cy="32" r="9" fill="var(--lo)"/><circle cx="32" cy="32" r="4.4" fill="#d4653a"/>'
+      : '<circle cx="32" cy="32" r="5" fill="var(--lo)"/>';
+    return '<svg viewBox="0 0 64 64" aria-hidden="true"><g fill="currentColor" transform="translate(32 32)">' +
+      '<ellipse cx="0" cy="-14" rx="8" ry="13"/>' +
+      '<ellipse cx="0" cy="-14" rx="8" ry="13" transform="rotate(60)"/>' +
+      '<ellipse cx="0" cy="-14" rx="8" ry="13" transform="rotate(120)"/>' +
+      '<ellipse cx="0" cy="-14" rx="8" ry="13" transform="rotate(180)"/>' +
+      '<ellipse cx="0" cy="-14" rx="8" ry="13" transform="rotate(240)"/>' +
+      '<ellipse cx="0" cy="-14" rx="8" ry="13" transform="rotate(300)"/>' +
+      "</g>" + core + "</svg>";
+  }
+
+  function swordSvg(tipY, curve, wraps, aura, tassel) {
+    var tipX = 32 + curve;
+    var d = "M" + tipX + " " + tipY + " Q " + (32 - curve) + " " + Math.round((tipY + 46) / 2) + " 32 46";
+    var extra = "";
+    if (aura) extra += '<circle cx="32" cy="30" r="22" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".75"/>';
+    var i;
+    for (i = 0; i < wraps; i++) {
+      var y = 50 + i * 3.4;
+      extra += '<path d="M29 ' + y + 'h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>';
+    }
+    if (tassel) extra += '<path d="M32 57.5 l3.2 3.2 -3.2 3.2 -3.2 -3.2 z" fill="currentColor"/>';
+    return '<svg viewBox="0 0 64 64" aria-hidden="true">' +
+      '<path d="' + d + '" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>' +
+      '<path d="' + d + '" fill="none" stroke="currentColor" stroke-width="1.25" opacity=".4" stroke-linecap="round"/>' +
+      '<path d="M22 46.5h20" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>' +
+      '<path d="M32 47.5v9" stroke="currentColor" stroke-width="3.3" stroke-linecap="round"/>' +
+      extra + "</svg>";
+  }
+
+  var ICONS = {
+    1: '<svg viewBox="0 0 64 64" aria-hidden="true"><path fill="currentColor" d="M32 12 36.4 27.2 52 32 36.4 36.8 32 52 27.6 36.8 12 32 27.6 27.2Z"/></svg>',
+    2: '<svg viewBox="0 0 64 64" aria-hidden="true"><path fill="currentColor" d="M32 8 37.2 24.6 54 30 38 36.2 42 52 32 42.5 22 52 26 36.2 10 30 26.8 24.6Z"/></svg>',
+    3: '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="26" cy="36" r="11" fill="currentColor"/><circle cx="40" cy="34" r="10" fill="currentColor"/><circle cx="32" cy="24" r="9" fill="currentColor"/></svg>',
+    4: crestSvg(false),
+    5: '<svg viewBox="0 0 64 64" aria-hidden="true"><path fill="currentColor" d="M14 28h36l-6 16H20z"/><path d="M18 28 24 18h16l6 10" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M22 36h20" stroke="currentColor" stroke-width="1.5" opacity=".45"/></svg>',
+    6: '<svg viewBox="0 0 64 64" aria-hidden="true"><path fill="currentColor" d="M27 8h10v36H27z"/><path fill="currentColor" d="M21 44h22v7H21z"/><path d="M32 14v24" stroke="currentColor" stroke-width="1.4" opacity=".35"/></svg>',
+    7: swordSvg(24, 3, 0, false, false),
+    8: swordSvg(16, 6, 1, false, false),
+    9: swordSvg(8, 9, 2, false, false),
+    10: swordSvg(5, 11, 2, false, true),
+    11: swordSvg(8, 8, 2, true, false),
+    12: crestSvg(true)
+  };
+
+  function icon(rank) { return ICONS[rank] || ICONS[1]; }
+
+  function lineCoord(dir, i, j) {
+    if (dir === 0) return [i, j];
+    if (dir === 1) return [i, 3 - j];
+    if (dir === 2) return [j, i];
+    return [3 - j, i];
+  }
+
+  function computeMove(cells, dir, seqStart) {
+    var next = new Array(16).fill(null);
+    var slides = [];
+    var vanished = [];
+    var born = [];
+    var moved = false;
+    var gained = 0;
+    var seq = seqStart;
+    var i, j, t, coords, tiles, placed, a, b, rank, tile, idx, fr, fc, r, c, value;
+    for (i = 0; i < 4; i++) {
+      coords = [];
+      for (j = 0; j < 4; j++) coords.push(lineCoord(dir, i, j));
+      tiles = [];
+      for (j = 0; j < 4; j++) {
+        tile = cells[coords[j][0] * 4 + coords[j][1]];
+        if (tile) tiles.push(tile);
+      }
+      placed = [];
+      for (t = 0; t < tiles.length; t++) {
+        a = tiles[t];
+        b = tiles[t + 1];
+        if (b && a.rank === b.rank && a.rank < MAX_RANK) {
+          seq += 1;
+          rank = a.rank + 1;
+          tile = { id: seq, rank: rank };
+          placed.push(tile);
+          r = coords[placed.length - 1][0];
+          c = coords[placed.length - 1][1];
+          slides.push({ id: a.id, r: r, c: c });
+          slides.push({ id: b.id, r: r, c: c });
+          vanished.push(a.id, b.id);
+          value = valueOf(rank);
+          born.push({ id: tile.id, rank: rank, r: r, c: c, value: value });
+          gained += value;
+          t += 1;
+          moved = true;
+        } else {
+          placed.push(a);
+          r = coords[placed.length - 1][0];
+          c = coords[placed.length - 1][1];
+          idx = -1;
+          for (j = 0; j < 16; j++) if (cells[j] && cells[j].id === a.id) idx = j;
+          fr = Math.floor(idx / 4);
+          fc = idx % 4;
+          if (fr !== r || fc !== c) moved = true;
+          slides.push({ id: a.id, r: r, c: c });
+        }
+      }
+      for (j = 0; j < 4; j++) {
+        r = coords[j][0];
+        c = coords[j][1];
+        next[r * 4 + c] = placed[j] || null;
+      }
+    }
+    return { next: next, slides: slides, vanished: vanished, born: born, moved: moved, gained: gained, seq: seq };
+  }
+
+  function hasMoves(cells) {
+    var i, r, c, t, u;
+    for (i = 0; i < 16; i++) if (!cells[i]) return true;
+    for (r = 0; r < 4; r++) {
+      for (c = 0; c < 4; c++) {
+        t = cells[r * 4 + c];
+        if (c < 3) {
+          u = cells[r * 4 + c + 1];
+          if (u && u.rank === t.rank && t.rank < MAX_RANK) return true;
+        }
+        if (r < 3) {
+          u = cells[(r + 1) * 4 + c];
+          if (u && u.rank === t.rank && t.rank < MAX_RANK) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  function makeRng(seed) {
+    var a = seed >>> 0;
+    return {
+      next: function () {
+        a |= 0;
+        a = (a + 0x6D2B79F5) | 0;
+        var t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      },
+      state: function () { return a >>> 0; },
+      restore: function (v) { a = v >>> 0; }
+    };
+  }
+
+  function rollRank(rng) { return rng.next() < 0.12 ? 2 : 1; }
+
+  function pack(ranks) {
+    return ranks.map(function (rank, i) { return rank ? { id: i + 1, rank: rank } : null; });
+  }
+
+  function rowRanks(cells, row) {
+    var out = [];
+    for (var c = 0; c < 4; c++) out.push(cells[row * 4 + c] ? cells[row * 4 + c].rank : 0);
+    return out.join(",");
+  }
+
+  function selfTest() {
+    var fail = [];
+    function eq(name, got, want) {
+      if (got !== want) fail.push(name + " got " + got + " want " + want);
+    }
+    var left = computeMove(pack([1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), 0, 10);
+    eq("pair-gap", rowRanks(left.next, 0), "2,1,0,0");
+    eq("pair-score", String(left.gained), "4");
+    var quad = computeMove(pack([1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), 0, 1);
+    eq("quad-left", rowRanks(quad.next, 0), "2,2,0,0");
+    eq("quad-score", String(quad.gained), "8");
+    var right = computeMove(pack([1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), 1, 1);
+    eq("quad-right", rowRanks(right.next, 0), "0,0,2,2");
+    var stay = computeMove(pack([1, 2, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), 0, 1);
+    eq("no-slide", String(stay.moved), "false");
+    var capped = computeMove(pack([0, 12, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), 0, 1);
+    eq("cap-slide", rowRanks(capped.next, 0), "12,12,0,0");
+    eq("cap-born", String(capped.born.length), "0");
+    var upCells = pack([1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]);
+    var up = computeMove(upCells, 2, 3);
+    eq("up-merge", String(up.next[0] && up.next[0].rank), "2");
+    eq("up-clear", String(up.next[8]), "null");
+    var full = [];
+    var r, c, bit;
+    for (r = 0; r < 4; r++) for (c = 0; c < 4; c++) {
+      bit = (r + c) % 2 === 0 ? 1 : 2;
+      full.push({ id: r * 4 + c + 1, rank: bit });
+    }
+    eq("dead-board", String(hasMoves(full)), "false");
+    eq("open-board", String(hasMoves(pack([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))), "true");
+    var rngA = makeRng(20261110);
+    var rngB = makeRng(20261110);
+    var seq = [];
+    var seqB = [];
+    for (r = 0; r < 6; r++) {
+      seq.push(Math.floor(rngA.next() * 1000));
+      seqB.push(Math.floor(rngB.next() * 1000));
+    }
+    eq("seed", seq.join("."), seqB.join("."));
+    var saved = rngA.state();
+    var n1 = rngA.next();
+    rngA.restore(saved);
+    eq("rewind", String(rngA.next()), String(n1));
+    return fail;
+  }
+
+  var cells = [];
+  var score = 0;
+  var nextRank = 1;
+  var rng = makeRng(1);
+  var seq = 0;
+  var moves = 0;
+  var merges = 0;
+  var highest = 0;
+  var over = false;
+  var forged = false;
+  var mode = "free";
+  var runDate = "";
+  var bestAtStart = 0;
+  var undosLeft = 3;
+  var undoStack = [];
+  var locked = false;
+  var pending = null;
+  var timer = 0;
+  var REDUCE = false;
+  var ANIM = 150;
+  var audioCtx = null;
+  var soundOn = true;
+  var lastReject = 0;
+  var confirmAction = null;
+  var toastTimer = 0;
+  var reportedOver = false;
+
+  var board, tilesEl, scoreEl, bestEl, bestLabel, nextName, nextTile, hintEl, highline, ladder;
+  var undoBtn, newBtn, freeBtn, dailyBtn, soundBtn, soundIcon, how, howClose, result, resultScore, resultSub, recordEl;
+  var sharePreview, fallback, shareBtn, resultUndo, againBtn, confirmBox, confirmText, toast, live;
+
+  function $(id) { return document.getElementById(id); }
+
+  function dateKey(d) {
+    var y = d.getFullYear();
+    var m = String(d.getMonth() + 1).padStart(2, "0");
+    var day = String(d.getDate()).padStart(2, "0");
+    return y + "-" + m + "-" + day;
+  }
+
+  function prettyDate(key) {
+    var parts = key.split("-");
+    var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return Number(parts[2]) + " " + months[Number(parts[1]) - 1];
+  }
+
+  function dateSeed(key) {
+    var p = key.split("-").map(Number);
+    return p[0] * 10000 + p[1] * 100 + p[2];
+  }
+
+  function fmt(n) { return n.toLocaleString("en-US"); }
+
+  function loadSave() {
+    var base = { v: 1, sound: true, how: false, freeBest: 0, freeRank: 0, dailyDate: "", dailyBest: 0, dailyRank: 0, dailyEver: 0, dailyEverRank: 0 };
+    try {
+      var raw = localStorage.getItem(STORE);
+      if (!raw) return base;
+      var data = JSON.parse(raw);
+      var k;
+      for (k in base) if (Object.prototype.hasOwnProperty.call(data, k)) base[k] = data[k];
+      return base;
+    } catch (err) {
+      return base;
+    }
+  }
+
+  function writeSave(data) {
+    try { localStorage.setItem(STORE, JSON.stringify(data)); } catch (err) { /* private mode */ }
+  }
+
+  function currentBest(save) {
+    if (mode === "daily") return save.dailyDate === runDate ? save.dailyBest : 0;
+    return save.freeBest;
+  }
+
+  function commitBest() {
+    var save = loadSave();
+    if (mode === "daily") {
+      if (save.dailyDate !== runDate) {
+        save.dailyDate = runDate;
+        save.dailyBest = 0;
+        save.dailyRank = 0;
+      }
+      if (score > save.dailyBest) save.dailyBest = score;
+      if (highest > save.dailyRank) save.dailyRank = highest;
+      if (score > save.dailyEver) save.dailyEver = score;
+      if (highest > save.dailyEverRank) save.dailyEverRank = highest;
+    } else {
+      if (score > save.freeBest) save.freeBest = score;
+      if (highest > save.freeRank) save.freeRank = highest;
+    }
+    writeSave(save);
+    return save;
+  }
+
+  function hub(name) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    try {
+      var host = window.Hub;
+      if (host && typeof host[name] === "function") host[name].apply(host, args);
+    } catch (err) { /* host optional */ }
+  }
+
+  function audio() {
+    if (!audioCtx) audioCtx = new AudioContext();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    return audioCtx;
+  }
+
+  function unlockAudio() {
+    try { audio(); } catch (err) { /* ignore */ }
+  }
+
+  function blip(freq, dur, type, gain, delay) {
+    if (!soundOn) return;
+    var ctx;
+    try { ctx = audio(); } catch (err) { return; }
+    var t0 = ctx.currentTime + (delay || 0);
+    var osc = ctx.createOscillator();
+    var amp = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t0);
+    amp.gain.setValueAtTime(0.0001, t0);
+    amp.gain.exponentialRampToValueAtTime(Math.max(gain, 0.0002), t0 + 0.012);
+    amp.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(amp);
+    amp.connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.03);
+  }
+
+  function playMove() { blip(180, 0.045, "square", 0.025); }
+  function playReject() {
+    var now = performance.now();
+    if (now - lastReject < 160) return;
+    lastReject = now;
+    blip(120, 0.05, "sine", 0.02);
+  }
+  function playMerge(rank, count) {
+    var f = SCALE[Math.min(Math.max(rank, 1), 12) - 1];
+    blip(f, 0.16, "sine", rank >= 9 ? 0.07 : 0.048);
+    if (rank >= 6) blip(f * 1.5, 0.14, "triangle", 0.028, 0.02);
+    if (count > 1) blip(f * 2, 0.1, "sine", 0.02, 0.045);
+    if (rank >= 12) blip(f * 2, 0.22, "triangle", 0.04, 0.06);
+  }
+  function playOver() {
+    blip(392, 0.18, "sine", 0.05, 0);
+    blip(311, 0.22, "sine", 0.045, 0.12);
+    blip(233, 0.36, "triangle", 0.04, 0.24);
+  }
+  function playUndo() { blip(520, 0.08, "triangle", 0.03); }
+
+  function paintSound() {
+    soundBtn.setAttribute("aria-pressed", soundOn ? "true" : "false");
+    soundBtn.setAttribute("aria-label", soundOn ? "Sound on" : "Sound off");
+    soundIcon.innerHTML = soundOn
+      ? '<path d="M4 10h4l5-4v12l-5-4H4z"/><path d="M16 9a4 4 0 0 1 0 6"/><path d="M18.5 7a7 7 0 0 1 0 10"/>'
+      : '<path d="M4 10h4l5-4v12l-5-4H4z"/><path d="M17 10l4 4M21 10l-4 4"/>';
+  }
+
+  function emptyIndexes(list) {
+    var out = [];
+    for (var i = 0; i < 16; i++) if (!list[i]) out.push(i);
+    return out;
+  }
+
+  function snapshot() {
+    return {
+      cells: cells.map(function (t) { return t ? { id: t.id, rank: t.rank } : null; }),
+      score: score,
+      nextRank: nextRank,
+      rng: rng.state(),
+      seq: seq,
+      moves: moves,
+      merges: merges,
+      highest: highest,
+      forged: forged
+    };
+  }
+
+  function addTile(tile, r, c, kind) {
+    var el = document.createElement("div");
+    el.className = "tile" + (kind === "merge" ? " is-merge" : kind === "new" ? " is-new" : "");
+    el.dataset.id = String(tile.id);
+    el.dataset.rank = String(tile.rank);
+    el.style.setProperty("--x", String(c));
+    el.style.setProperty("--y", String(r));
+    var tier = TIERS[tile.rank - 1];
+    el.innerHTML = '<div class="face">' + icon(tile.rank) + "<b>" + tier.name + "</b><em>" + valueOf(tile.rank) + "</em></div>";
+    el.setAttribute("role", "img");
+    el.setAttribute("aria-label", tier.name + ", " + valueOf(tile.rank));
+    tilesEl.appendChild(el);
+  }
+
+  function rebuild(kind) {
+    tilesEl.replaceChildren();
+    for (var i = 0; i < 16; i++) {
+      if (!cells[i]) continue;
+      addTile(cells[i], Math.floor(i / 4), i % 4, kind || "");
+    }
+  }
+
+  function updateHud() {
+    var save = loadSave();
+    scoreEl.textContent = fmt(score);
+    bestEl.textContent = fmt(currentBest(save));
+    bestLabel.textContent = mode === "daily" ? "Today" : "Best";
+    var tier = TIERS[nextRank - 1];
+    nextName.textContent = tier.name;
+    nextTile.dataset.rank = String(nextRank);
+    nextTile.innerHTML = icon(nextRank);
+    hintEl.textContent = mode === "daily"
+      ? "Daily forge · " + prettyDate(runDate) + " · same sparks for everyone."
+      : "Free forge · matching metals become the next blade.";
+    var name = highest ? TIERS[highest - 1].name : "—";
+    highline.innerHTML = forged
+      ? "Six gates open · <strong>Rokumon</strong>"
+      : "Highest · <strong>" + name + "</strong>";
+    ladder.replaceChildren();
+    for (var rank = 1; rank <= 12; rank++) {
+      var pip = document.createElement("i");
+      var cls = "";
+      if (rank < highest) cls = "on";
+      if (rank === highest) cls = highest === 12 ? "open" : "now";
+      pip.className = cls;
+      ladder.appendChild(pip);
+    }
+    board.classList.toggle("hot", highest >= 9);
+    undoBtn.textContent = "Undo · " + undosLeft;
+    undoBtn.disabled = locked || undosLeft <= 0 || undoStack.length === 0;
+    newBtn.disabled = locked;
+    freeBtn.disabled = locked;
+    dailyBtn.disabled = locked;
+    freeBtn.setAttribute("aria-pressed", mode === "free" ? "true" : "false");
+    dailyBtn.setAttribute("aria-pressed", mode === "daily" ? "true" : "false");
+  }
+
+  function spawnInto(list, animate) {
+    var empties = emptyIndexes(list);
+    if (!empties.length) return null;
+    var at = empties[Math.floor(rng.next() * empties.length)];
+    var rank = nextRank;
+    nextRank = rollRank(rng);
+    seq += 1;
+    var tile = { id: seq, rank: rank };
+    list[at] = tile;
+    if (rank > highest) highest = rank;
+    if (animate) addTile(tile, Math.floor(at / 4), at % 4, "new");
+    return tile;
+  }
+
+  function shareText() {
+    var head = mode === "daily" ? "Rokumon Merge " + runDate : "Rokumon Merge · Free forge";
+    var lines = [head, fmt(score) + " · " + (highest ? TIERS[highest - 1].name : "Empty")];
+    for (var r = 0; r < 4; r++) {
+      var row = "";
+      for (var c = 0; c < 4; c++) {
+        var t = cells[r * 4 + c];
+        row += t ? GLYPH[t.rank] : GLYPH[0];
+      }
+      lines.push(row);
+    }
+    return lines.join("\n");
+  }
+
+  function showToast(text) {
+    toast.textContent = text;
+    toast.hidden = false;
+    window.clearTimeout(toastTimer);
+    toastTimer = window.setTimeout(function () { toast.hidden = true; }, 2200);
+  }
+
+  function showResult() {
+    var tier = TIERS[Math.max(highest, 1) - 1];
+    resultScore.textContent = fmt(score);
+    resultSub.textContent = moves + " moves · " + merges + " merges · highest " + (highest ? tier.name : "—");
+    recordEl.hidden = !(score > bestAtStart && score > 0);
+    sharePreview.textContent = shareText();
+    fallback.hidden = true;
+    resultUndo.hidden = undosLeft <= 0 || undoStack.length === 0;
+    resultUndo.textContent = "Undo last slide · " + undosLeft;
+    result.hidden = false;
+    shareBtn.textContent = "Share result";
+    shareBtn.focus();
+  }
+
+  function endRun() {
+    if (reportedOver) return;
+    over = true;
+    pending = null;
+    reportedOver = true;
+    playOver();
+    commitBest();
+    showResult();
+    hub("score", score);
+    hub("event", "run-ended", {
+      score: score,
+      bestRank: highest,
+      value: highest ? valueOf(highest) : 0,
+      daily: mode === "daily",
+      moves: moves,
+      merges: merges
+    });
+    hub("gameOver", score, 0);
+    live.textContent = "Forge cooled. Score " + fmt(score) + ".";
+  }
+
+  function finishMove(result) {
+    var b, el, maxBorn, before;
+    cells = result.next;
+    seq = result.seq;
+    for (b = 0; b < result.vanished.length; b++) {
+      el = tilesEl.querySelector('[data-id="' + result.vanished[b] + '"]');
+      if (el) el.remove();
+    }
+    before = highest;
+    maxBorn = 0;
+    for (b = 0; b < result.born.length; b++) {
+      addTile(result.born[b], result.born[b].r, result.born[b].c, "merge");
+      if (result.born[b].rank > highest) highest = result.born[b].rank;
+      if (result.born[b].rank > maxBorn) maxBorn = result.born[b].rank;
+      if (!REDUCE) {
+        var floater = document.createElement("div");
+        floater.className = "floater";
+        floater.style.setProperty("--x", String(result.born[b].c));
+        floater.style.setProperty("--y", String(result.born[b].r));
+        floater.textContent = "+" + result.born[b].value;
+        tilesEl.appendChild(floater);
+        window.setTimeout(function (node) { return function () { node.remove(); }; }(floater), 650);
+      }
+    }
+    score += result.gained;
+    merges += result.born.length;
+    moves += 1;
+    spawnInto(cells, true);
+    if (!forged && highest >= 12 && before < 12) {
+      forged = true;
+      showToast("The six gates open");
+    }
+    if (maxBorn >= 9) {
+      board.classList.remove("shake");
+      void board.offsetWidth;
+      board.classList.add("shake");
+    }
+    if (result.born.length) playMerge(maxBorn, result.born.length);
+    commitBest();
+    if (highest > before && maxBorn > 0) {
+      hub("event", "highest-tile", {
+        rank: highest,
+        value: valueOf(highest),
+        name: TIERS[highest - 1].name,
+        score: score,
+        daily: mode === "daily"
+      });
+    }
+    hub("score", score);
+    locked = false;
+    updateHud();
+    live.textContent = "Score " + fmt(score) + ". Next " + TIERS[nextRank - 1].name + ".";
+    if (!hasMoves(cells)) {
+      endRun();
+      updateHud();
+      return;
+    }
+    if (pending != null) {
+      var dir = pending;
+      pending = null;
+      beginMove(dir);
+    }
+  }
+
+  function beginMove(dir) {
+    if (over || locked) return;
+    var result = computeMove(cells, dir, seq);
+    if (!result.moved) {
+      playReject();
+      pending = null;
+      return;
+    }
+    undoStack.push(snapshot());
+    if (undoStack.length > 40) undoStack.shift();
+    locked = true;
+    updateHud();
+    playMove();
+    var s, el;
+    for (s = 0; s < result.slides.length; s++) {
+      el = tilesEl.querySelector('[data-id="' + result.slides[s].id + '"]');
+      if (!el) continue;
+      el.style.setProperty("--x", String(result.slides[s].c));
+      el.style.setProperty("--y", String(result.slides[s].r));
+    }
+    window.clearTimeout(timer);
+    timer = window.setTimeout(function () { finishMove(result); }, ANIM);
+  }
+
+  function requestMove(dir) {
+    if (!how.hidden || !confirmBox.hidden || !result.hidden) return;
+    unlockAudio();
+    if (locked) { pending = dir; return; }
+    beginMove(dir);
+  }
+
+  function startRun() {
+    window.clearTimeout(timer);
+    pending = null;
+    locked = false;
+    over = false;
+    reportedOver = false;
+    forged = false;
+    score = 0;
+    moves = 0;
+    merges = 0;
+    highest = 0;
+    seq = 0;
+    undosLeft = 3;
+    undoStack = [];
+    runDate = dateKey(new Date());
+    var save = loadSave();
+    if (mode === "daily") {
+      if (save.dailyDate !== runDate) {
+        save.dailyDate = runDate;
+        save.dailyBest = 0;
+        save.dailyRank = 0;
+        writeSave(save);
+      }
+      bestAtStart = save.dailyBest;
+      rng = makeRng(dateSeed(runDate));
+    } else {
+      bestAtStart = save.freeBest;
+      var seed = (Date.now() ^ Math.floor(Math.random() * 0x100000000)) >>> 0;
+      rng = makeRng(seed || 1);
+    }
+    cells = new Array(16).fill(null);
+    nextRank = rollRank(rng);
+    spawnInto(cells, false);
+    spawnInto(cells, false);
+    result.hidden = true;
+    confirmBox.hidden = true;
+    tilesEl.classList.add("no-anim");
+    rebuild("new");
+    requestAnimationFrame(function () { tilesEl.classList.remove("no-anim"); });
+    updateHud();
+    hub("ready");
+    live.textContent = (mode === "daily" ? "Daily forge ready." : "Free forge ready.");
+  }
+
+  function undo() {
+    if (locked || undosLeft <= 0 || !undoStack.length) return;
+    var snap = undoStack.pop();
+    undosLeft -= 1;
+    cells = snap.cells.map(function (t) { return t ? { id: t.id, rank: t.rank } : null; });
+    score = snap.score;
+    nextRank = snap.nextRank;
+    rng.restore(snap.rng);
+    seq = snap.seq;
+    moves = snap.moves;
+    merges = snap.merges;
+    highest = snap.highest;
+    forged = snap.forged;
+    over = false;
+    reportedOver = false;
+    result.hidden = true;
+    tilesEl.classList.add("no-anim");
+    rebuild("");
+    requestAnimationFrame(function () { tilesEl.classList.remove("no-anim"); });
+    updateHud();
+    hub("score", score);
+    playUndo();
+    live.textContent = "Undone. Score " + fmt(score) + ". " + undosLeft + " undos left.";
+  }
+
+  function askConfirm(text, action) {
+    confirmText.textContent = text;
+    confirmAction = action;
+    confirmBox.hidden = false;
+  }
+
+  function closeConfirm(ok) {
+    confirmBox.hidden = true;
+    var action = confirmAction;
+    confirmAction = null;
+    if (ok && action) action();
+  }
+
+  function requestNew() {
+    if (locked) return;
+    if (moves > 0 && !over) {
+      askConfirm("The board resets. Your best score stays on this device.", startRun);
+      return;
+    }
+    startRun();
+  }
+
+  function requestMode(next) {
+    if (locked || next === mode) return;
+    var go = function () { mode = next; startRun(); };
+    if (moves > 0 && !over) {
+      askConfirm(next === "daily" ? "Leave this forge for today’s shared board?" : "Leave this forge for free play?", go);
+      return;
+    }
+    go();
+  }
+
+  function closeHow() {
+    how.hidden = true;
+    var save = loadSave();
+    save.how = true;
+    writeSave(save);
+    unlockAudio();
+  }
+
+  function openHow(first) {
+    howClose.textContent = first ? "Begin the forge" : "Close";
+    how.hidden = false;
+  }
+
+  async function doShare() {
+    var text = shareText();
+    try {
+      if (navigator.share) {
+        await navigator.share({ text: text });
+        return;
+      }
+    } catch (err) {
+      if (err && err.name === "AbortError") return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      shareBtn.textContent = "Copied";
+      window.setTimeout(function () { shareBtn.textContent = "Share result"; }, 1600);
+    } catch (err) {
+      fallback.hidden = false;
+      fallback.textContent = text;
+      fallback.focus();
+    }
+  }
+
+  function fillSamples() {
+    var ranks = [1, 5, 9, 12];
+    var host = $("samples");
+    host.replaceChildren();
+    for (var i = 0; i < ranks.length; i++) {
+      var fig = document.createElement("figure");
+      var tile = document.createElement("div");
+      tile.className = "mini";
+      tile.dataset.rank = String(ranks[i]);
+      tile.innerHTML = icon(ranks[i]);
+      var cap = document.createElement("figcaption");
+      cap.textContent = TIERS[ranks[i] - 1].name;
+      fig.append(tile, cap);
+      host.append(fig);
+    }
+  }
+
+  function onKey(e) {
+    if (e.key === "Escape") {
+      if (!how.hidden) closeHow();
+      else if (!confirmBox.hidden) closeConfirm(false);
+      return;
+    }
+    var map = { ArrowLeft: 0, ArrowRight: 1, ArrowUp: 2, ArrowDown: 3, a: 0, A: 0, d: 1, D: 1, w: 2, W: 2, s: 3, S: 3 };
+    if (!Object.prototype.hasOwnProperty.call(map, e.key)) return;
+    e.preventDefault();
+    requestMove(map[e.key]);
+  }
+
+  function boot() {
+    var failures = selfTest();
+    if (failures.length) console.error("Rokumon rules self-test failed: " + failures.join("; "));
+    REDUCE = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    ANIM = REDUCE ? 0 : 150;
+
+    board = $("board");
+    tilesEl = $("tiles");
+    scoreEl = $("score");
+    bestEl = $("best");
+    bestLabel = $("best-label");
+    nextName = $("next-name");
+    nextTile = $("next-tile");
+    hintEl = $("hint");
+    highline = $("highline");
+    ladder = $("ladder");
+    undoBtn = $("undo");
+    newBtn = $("anew");
+    freeBtn = $("mode-free");
+    dailyBtn = $("mode-daily");
+    soundBtn = $("sound");
+    soundIcon = $("sound-icon");
+    how = $("how");
+    howClose = $("how-close");
+    result = $("result");
+    resultScore = $("result-score");
+    resultSub = $("result-sub");
+    recordEl = $("record");
+    sharePreview = $("share-preview");
+    fallback = $("fallback");
+    shareBtn = $("share");
+    resultUndo = $("result-undo");
+    againBtn = $("again");
+    confirmBox = $("confirm");
+    confirmText = $("confirm-text");
+    toast = $("toast");
+    live = $("live");
+
+    var cellsHost = $("cells");
+    for (var i = 0; i < 16; i++) {
+      var cell = document.createElement("div");
+      cell.className = "cell";
+      cellsHost.appendChild(cell);
+    }
+    fillSamples();
+
+    var save = loadSave();
+    soundOn = save.sound !== false;
+    paintSound();
+
+    var pointer = null;
+    board.addEventListener("pointerdown", function (e) {
+      if (e.button != null && e.button !== 0) return;
+      pointer = { id: e.pointerId, x: e.clientX, y: e.clientY };
+      if (board.setPointerCapture) board.setPointerCapture(e.pointerId);
+    });
+    board.addEventListener("pointerup", function (e) {
+      if (!pointer || pointer.id !== e.pointerId) return;
+      var dx = e.clientX - pointer.x;
+      var dy = e.clientY - pointer.y;
+      pointer = null;
+      if (Math.hypot(dx, dy) < 24) return;
+      if (Math.abs(dx) > Math.abs(dy)) requestMove(dx > 0 ? 1 : 0);
+      else requestMove(dy > 0 ? 3 : 2);
+    });
+    board.addEventListener("pointercancel", function () { pointer = null; });
+
+    window.addEventListener("keydown", onKey);
+    undoBtn.addEventListener("click", function () { unlockAudio(); undo(); });
+    newBtn.addEventListener("click", function () { unlockAudio(); requestNew(); });
+    freeBtn.addEventListener("click", function () { unlockAudio(); requestMode("free"); });
+    dailyBtn.addEventListener("click", function () { unlockAudio(); requestMode("daily"); });
+    soundBtn.addEventListener("click", function () {
+      unlockAudio();
+      soundOn = !soundOn;
+      var data = loadSave();
+      data.sound = soundOn;
+      writeSave(data);
+      paintSound();
+      if (soundOn) playMove();
+    });
+    $("info").addEventListener("click", function () { openHow(false); });
+    howClose.addEventListener("click", closeHow);
+    how.addEventListener("click", function (e) { if (e.target === how) closeHow(); });
+    shareBtn.addEventListener("click", function () { unlockAudio(); doShare(); });
+    resultUndo.addEventListener("click", function () { unlockAudio(); undo(); });
+    againBtn.addEventListener("click", function () { unlockAudio(); startRun(); });
+    $("confirm-no").addEventListener("click", function () { closeConfirm(false); });
+    $("confirm-yes").addEventListener("click", function () { closeConfirm(true); });
+
+    startRun();
+    if (!save.how) openHow(true);
+    document.body.tabIndex = -1;
+  }
+
+  if (typeof document !== "undefined") boot();
+})();
+</script>
+</body>
+</html>

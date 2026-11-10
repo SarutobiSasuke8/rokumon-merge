@@ -1,0 +1,77 @@
+{
+  "slug": "rokumon-merge",
+  "title": "Rokumon Merge",
+  "tagline": "Slide the forge. Match metals into blades.",
+  "description": "A 2048-style sliding merge on a 4×4 forge. Sparks become embers, ingots, and finished blades up to the Rokumon crest. Free play plus a date-seeded daily forge, limited undo, and local bests.",
+  "status": "released",
+  "visibility": "unlisted",
+  "featured": false,
+  "version": "1.0.0",
+  "releasedAt": "2026-11-10",
+  "updatedAt": "2026-11-10",
+  "delivery": {
+    "mode": "embedded",
+    "release": "1.0.0",
+    "budget": { "maxBundleBytes": 1048576, "maxFiles": 8 }
+  },
+  "genres": ["Puzzle"],
+  "tags": ["merge", "2048", "daily", "forge", "ninja", "short-session", "mobile", "single-player"],
+  "controls": ["keyboard", "mouse", "touch"],
+  "players": { "min": 1, "max": 1 },
+  "support": { "desktop": "full", "mobile": "full" },
+  "media": {
+    "cover": null,
+    "hero": null,
+    "logo": null,
+    "screenshots": []
+  },
+  "theme": { "accent": "#E0B15A", "background": "#0C0B09" },
+  "credits": {
+    "developer": "Rokumon Games",
+    "art": "Rokumon Games",
+    "audio": "Synthesized Web Audio"
+  },
+  "runtime": {
+    "kind": "iframe",
+    "entry": "/games/rokumon-merge/index.html",
+    "trust": "first-party",
+    "orientation": "any",
+    "allowFullscreen": true,
+    "pointerLock": false
+  },
+  "bridge": {
+    "version": 1,
+    "enabled": true,
+    "capabilities": ["score", "event"],
+    "events": [
+      {
+        "name": "highest-tile",
+        "properties": {
+          "rank": "number",
+          "value": "number",
+          "name": "string",
+          "score": "number",
+          "daily": "boolean"
+        }
+      },
+      {
+        "name": "run-ended",
+        "properties": {
+          "score": "number",
+          "bestRank": "number",
+          "value": "number",
+          "daily": "boolean",
+          "moves": "number",
+          "merges": "number"
+        }
+      }
+    ]
+  },
+  "source": {
+    "repo": "https://github.com/SarutobiSasuke8/rokumon-merge",
+    "localPath": null,
+    "bundlePath": null,
+    "bundleIncludes": null,
+    "buildCommand": null
+  }
+}
