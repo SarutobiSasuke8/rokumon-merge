@@ -145,7 +145,9 @@
   .keys { display: none; font-size: 12px; }
   .board-wrap { display: grid; place-items: center; }
   .board {
-    width: min(100%, 460px);
+    /* Shrink on short screens so the controls stay in view without scrolling. */
+    width: min(100%, 460px, max(260px, calc(100vh - 440px)));
+    width: min(100%, 460px, max(260px, calc(100dvh - 440px)));
     aspect-ratio: 1;
     padding: 10px;
     border-radius: 20px;
@@ -154,7 +156,11 @@
     box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.45), 0 18px 40px rgba(0, 0, 0, 0.35);
     touch-action: none;
     user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
   }
+  .board:focus { outline: none; }
+  .board:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
   .board.hot { box-shadow: inset 0 0 0 1px rgba(224, 177, 90, 0.45), 0 18px 40px rgba(0, 0, 0, 0.35); }
   .play { position: relative; width: 100%; height: 100%; }
   .cells, .tiles { position: absolute; inset: 0; }
@@ -190,9 +196,9 @@
   .face svg { width: 54%; height: 48%; }
   .face b {
     margin-top: 1px;
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 700;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
     line-height: 1;
     max-width: 94%;
@@ -203,11 +209,14 @@
   .face em {
     position: absolute;
     top: 4px;
-    left: 6px;
+    left: 5px;
+    padding: 1px 4px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.34);
     font-style: normal;
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
-    opacity: 0.72;
+    line-height: 1.2;
     font-variant-numeric: tabular-nums;
   }
   @container (max-height: 62px) {
@@ -226,8 +235,8 @@
   [data-rank="1"] { --hi: #514a43; --lo: #3a342e; --inkc: #f3e6d6; --edge: #6b6258; }
   [data-rank="2"] { --hi: #8a4828; --lo: #6a341f; --inkc: #ffd7c2; --edge: #c47a52; }
   [data-rank="3"] { --hi: #6a3438; --lo: #4a2428; --inkc: #ffd0c8; --edge: #a85a52; }
-  [data-rank="4"] { --hi: #a45a30; --lo: #7a3e22; --inkc: #ffe0b8; --edge: #e09a55; }
-  [data-rank="5"] { --hi: #8f6d32; --lo: #6e5324; --inkc: #ffe8c2; --edge: #d4b072; }
+  [data-rank="4"] { --hi: #8c4a26; --lo: #7a3e22; --inkc: #ffe0b8; --edge: #e09a55; }
+  [data-rank="5"] { --hi: #7c5e28; --lo: #6e5324; --inkc: #ffe8c2; --edge: #d4b072; }
   [data-rank="6"] { --hi: #4d565e; --lo: #3a4148; --inkc: #e6eef4; --edge: #8aa0b0; }
   [data-rank="7"] { --hi: #34506c; --lo: #24364c; --inkc: #e4eef8; --edge: #7f9cbc; }
   [data-rank="8"] { --hi: #2c4666; --lo: #1e3048; --inkc: #d5e4f5; --edge: #6e8eb0; }
@@ -273,7 +282,8 @@
   .ladder {
     display: flex;
     gap: 4px;
-    width: min(100%, 460px);
+    width: min(100%, 460px, max(260px, calc(100vh - 440px)));
+    width: min(100%, 460px, max(260px, calc(100dvh - 440px)));
     margin: 0 auto;
   }
   .ladder i { flex: 1; height: 5px; border-radius: 99px; background: #2a241c; }
@@ -381,12 +391,29 @@
     letter-spacing: 0.04em;
   }
   .toast[hidden] { display: none; }
+  .pad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .pad button {
+    height: 44px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ivory);
+    display: grid;
+    place-items: center;
+    padding: 0;
+  }
+  .pad svg { width: 22px; height: 22px; }
   .live {
-    position: absolute;
+    position: fixed;
+    pointer-events: none;
+    top: 0;
+    left: 0;
     width: 1px;
     height: 1px;
+    margin: 0;
     overflow: hidden;
     clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
   @media (min-width: 800px) and (hover: hover) {
     .keys { display: block; }
@@ -398,7 +425,7 @@
 </style>
 </head>
 <body>
-  <div class="app">
+  <div class="app" id="app">
     <header class="top">
       <div class="brand">
         <svg class="seal" viewBox="0 0 64 64" aria-hidden="true">
@@ -419,11 +446,11 @@
         </div>
       </div>
       <div class="tools">
-        <button class="iconbtn" id="sound" type="button" aria-pressed="true" aria-label="Sound on">
-          <svg id="sound-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></svg>
+        <button class="iconbtn" id="sound" type="button" aria-pressed="true" aria-label="Sound">
+          <svg id="sound-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"></svg>
         </button>
         <button class="iconbtn" id="info" type="button" aria-label="How to play">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5h.01"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5h.01"/></svg>
         </button>
       </div>
     </header>
@@ -431,7 +458,7 @@
     <section class="stats" aria-label="Score">
       <article class="stat"><span>Score</span><b id="score">0</b></article>
       <article class="stat"><span id="best-label">Best</span><b id="best">0</b></article>
-      <article class="stat stat-next"><div><span>Next</span><b id="next-name">Spark</b></div><div class="mini" id="next-tile" data-rank="1"></div></article>
+      <article class="stat stat-next"><div><span>Next</span><b id="next-name">Spark</b></div><div class="mini" id="next-tile" data-rank="1" aria-hidden="true"></div></article>
     </section>
 
     <div class="modes" role="group" aria-label="Mode">
@@ -441,20 +468,27 @@
     <p class="hint" id="hint"></p>
 
     <div class="board-wrap">
-      <div class="board" id="board">
+      <div class="board" id="board" tabindex="0" role="application" aria-roledescription="puzzle board" aria-label="Forge board. Arrow keys or WASD slide every tile." aria-describedby="board-desc">
         <div class="play" id="play">
-          <div class="cells" id="cells"></div>
-          <div class="tiles" id="tiles"></div>
+          <div class="cells" id="cells" aria-hidden="true"></div>
+          <div class="tiles" id="tiles" aria-hidden="true"></div>
         </div>
       </div>
     </div>
+    <p class="live" id="board-desc"></p>
     <div class="ladder" id="ladder" aria-hidden="true"></div>
     <p class="highline" id="highline"></p>
+    <div class="pad" role="group" aria-label="Slide">
+      <button type="button" data-dir="0" aria-label="Slide left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <button type="button" data-dir="2" aria-label="Slide up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
+      <button type="button" data-dir="3" aria-label="Slide down"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      <button type="button" data-dir="1" aria-label="Slide right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+    </div>
     <div class="actions">
       <button class="ghost" type="button" id="undo">Undo · 3</button>
       <button class="ghost" type="button" id="anew">New forge</button>
     </div>
-    <p class="keys">Arrow keys or WASD · swipe the board</p>
+    <p class="keys">Arrow keys or WASD · swipe the board · U to undo</p>
   </div>
 
   <div class="overlay" id="how" hidden>
@@ -463,11 +497,11 @@
       <h2 id="how-title">Slide. Match. Temper.</h2>
       <div class="samples" id="samples"></div>
       <ol>
-        <li>Swipe, or press an arrow key. Every tile slides that way.</li>
+        <li>Swipe, press an arrow key, or use the arrow buttons. Every tile slides that way.</li>
         <li>Two of the same metal become the next tier and score that tier’s value. A tile merges only once per move — four sparks make two embers, not a coal.</li>
-        <li>A new piece appears after each move. Next shows whether it will be a spark or, less often, an ember.</li>
+        <li>A new piece appears after each move that changes the board. Next shows whether it will be a spark or, less often, an ember.</li>
         <li>The Rokumon crest does not combine. The forge cools only when the board is full and nothing matches.</li>
-        <li>Daily uses today’s date as a shared seed, so everyone draws the same sparks. You get three undos a run.</li>
+        <li>Daily uses today’s date as a shared seed, so everyone draws the same sparks. You get three undos a run. Your forge is kept if you close the page.</li>
       </ol>
       <div class="stack">
         <button class="primary" type="button" id="how-close">Begin the forge</button>
@@ -476,13 +510,13 @@
   </div>
 
   <div class="overlay" id="result" hidden>
-    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="result-label">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="result-label" aria-describedby="result-sub">
       <p class="eyebrow" id="result-label">Forge cooled</p>
       <p class="record" id="record" hidden>New best</p>
       <h2 id="result-score">0</h2>
       <p id="result-sub"></p>
-      <pre class="share-preview" id="share-preview"></pre>
-      <pre class="fallback" id="fallback" hidden tabindex="0"></pre>
+      <pre class="share-preview" id="share-preview" aria-hidden="true"></pre>
+      <pre class="fallback" id="fallback" hidden tabindex="0" aria-label="Result text to copy"></pre>
       <div class="stack">
         <button class="primary" type="button" id="share">Share result</button>
         <button class="ghost" type="button" id="result-undo">Undo last slide</button>
@@ -492,7 +526,7 @@
   </div>
 
   <div class="overlay" id="confirm" hidden>
-    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+    <div class="sheet" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-text">
       <h2 id="confirm-title">Abandon this forge?</h2>
       <p id="confirm-text"></p>
       <div class="stack">
@@ -503,23 +537,336 @@
   </div>
 
   <p class="toast" id="toast" hidden role="status"></p>
-  <p class="live" id="live" aria-live="polite"></p>
+  <p class="live" id="live" aria-live="polite" aria-atomic="true"></p>
+
+<script id="rokumon-merge-logic">
+/*
+ * Rokumon Merge rules. Pure and deterministic: no DOM, no storage, no clock.
+ * Randomness comes in as a function returning a number in [0, 1), so the same
+ * rand sequence always gives the same game. The tests load this block on its own.
+ */
+(function (root) {
+  "use strict";
+
+  var SIZE = 4;
+  var CELLS = SIZE * SIZE;
+  var MAX_RANK = 12;
+  var EMBER_CHANCE = 0.12;
+  var UNDO_LIMIT = 3;
+  var MAX_SCORE = 1e9;
+  var NAMES = ["Spark", "Ember", "Coal", "Bloom", "Ingot", "Blank", "Tanto", "Wakizashi", "Katana", "Odachi", "Spirit", "Rokumon"];
+  var DIR = { left: 0, right: 1, up: 2, down: 3 };
+
+  function valueOf(rank) { return Math.pow(2, rank); }
+
+  function isRank(n) { return Number.isInteger(n) && n >= 1 && n <= MAX_RANK; }
+
+  function isCount(n, max) { return Number.isSafeInteger(n) && n >= 0 && n <= (max == null ? MAX_SCORE : max); }
+
+  // Cell [row, col] of step `step` along line `line`, read from the side tiles slide towards.
+  function lineCoord(dir, line, step) {
+    if (dir === 0) return [line, step];
+    if (dir === 1) return [line, SIZE - 1 - step];
+    if (dir === 2) return [step, line];
+    return [SIZE - 1 - step, line];
+  }
+
+  // Slide every tile one way. Each tile merges at most once, and the pair nearest
+  // the wall merges first. Tiles are { id, rank }; new tiles take ids after `seq`.
+  function slide(cells, dir, seq) {
+    if (dir !== 0 && dir !== 1 && dir !== 2 && dir !== 3) throw new RangeError("bad direction " + dir);
+    var next = new Array(CELLS).fill(null);
+    var slides = [];
+    var vanished = [];
+    var born = [];
+    var moved = false;
+    var gained = 0;
+    var origin = {};
+    var i, j, t, coords, line, placed, a, b, rank, tile, r, c, at;
+    for (i = 0; i < CELLS; i++) if (cells[i]) origin[cells[i].id] = i;
+    for (i = 0; i < SIZE; i++) {
+      coords = [];
+      for (j = 0; j < SIZE; j++) coords.push(lineCoord(dir, i, j));
+      line = [];
+      for (j = 0; j < SIZE; j++) {
+        tile = cells[coords[j][0] * SIZE + coords[j][1]];
+        if (tile) line.push(tile);
+      }
+      placed = 0;
+      for (t = 0; t < line.length; t++) {
+        a = line[t];
+        b = line[t + 1];
+        r = coords[placed][0];
+        c = coords[placed][1];
+        at = r * SIZE + c;
+        if (b && a.rank === b.rank && a.rank < MAX_RANK) {
+          seq += 1;
+          rank = a.rank + 1;
+          next[at] = { id: seq, rank: rank };
+          slides.push({ id: a.id, r: r, c: c }, { id: b.id, r: r, c: c });
+          vanished.push(a.id, b.id);
+          born.push({ id: seq, rank: rank, r: r, c: c, value: valueOf(rank) });
+          gained += valueOf(rank);
+          moved = true;
+          t += 1;
+        } else {
+          next[at] = a;
+          if (origin[a.id] !== at) moved = true;
+          slides.push({ id: a.id, r: r, c: c });
+        }
+        placed += 1;
+      }
+    }
+    return { next: next, slides: slides, vanished: vanished, born: born, moved: moved, gained: gained, seq: seq };
+  }
+
+  function hasMoves(cells) {
+    var r, c, t, u;
+    for (r = 0; r < CELLS; r++) if (!cells[r]) return true;
+    for (r = 0; r < SIZE; r++) {
+      for (c = 0; c < SIZE; c++) {
+        t = cells[r * SIZE + c];
+        if (t.rank >= MAX_RANK) continue;
+        if (c < SIZE - 1) {
+          u = cells[r * SIZE + c + 1];
+          if (u.rank === t.rank) return true;
+        }
+        if (r < SIZE - 1) {
+          u = cells[(r + 1) * SIZE + c];
+          if (u.rank === t.rank) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  function emptyIndexes(cells) {
+    var out = [];
+    for (var i = 0; i < CELLS; i++) if (!cells[i]) out.push(i);
+    return out;
+  }
+
+  function rollRank(rand) { return rand() < EMBER_CHANCE ? 2 : 1; }
+
+  // Place a tile of `rank` in a random empty cell. Returns a new array; null when full.
+  function spawn(cells, rank, rand, seq) {
+    var empties = emptyIndexes(cells);
+    if (!empties.length) return null;
+    var pick = Math.floor(rand() * empties.length);
+    if (!(pick >= 0)) pick = 0;
+    if (pick > empties.length - 1) pick = empties.length - 1;
+    var at = empties[pick];
+    var next = cells.slice();
+    seq += 1;
+    var tile = { id: seq, rank: rank };
+    next[at] = tile;
+    return { cells: next, at: at, tile: tile, seq: seq };
+  }
+
+  function maxRank(cells) {
+    var top = 0;
+    for (var i = 0; i < CELLS; i++) if (cells[i] && cells[i].rank > top) top = cells[i].rank;
+    return top;
+  }
+
+  // Draw order matches release 1.0.0, so a daily seed deals the same board it always did.
+  function newRun(rand) {
+    var state = {
+      cells: new Array(CELLS).fill(null),
+      score: 0, nextRank: rollRank(rand), seq: 0, moves: 0, merges: 0,
+      highest: 0, forged: false, over: false
+    };
+    for (var k = 0; k < 2; k++) {
+      var s = spawn(state.cells, state.nextRank, rand, state.seq);
+      state.cells = s.cells;
+      state.seq = s.seq;
+      state.nextRank = rollRank(rand);
+    }
+    state.highest = maxRank(state.cells);
+    return state;
+  }
+
+  // One player move. A move that changes nothing returns the same state and draws nothing.
+  function applyMove(state, dir, rand) {
+    if (state.over) return { state: state, moved: false };
+    var res = slide(state.cells, dir, state.seq);
+    if (!res.moved) return { state: state, moved: false, slide: res };
+    var topBorn = 0;
+    for (var b = 0; b < res.born.length; b++) if (res.born[b].rank > topBorn) topBorn = res.born[b].rank;
+    var sp = spawn(res.next, state.nextRank, rand, res.seq);
+    var highest = Math.max(state.highest, topBorn, sp.tile.rank);
+    var next = {
+      cells: sp.cells,
+      score: state.score + res.gained,
+      nextRank: rollRank(rand),
+      seq: sp.seq,
+      moves: state.moves + 1,
+      merges: state.merges + res.born.length,
+      highest: highest,
+      forged: state.forged || highest >= MAX_RANK,
+      over: false
+    };
+    next.over = !hasMoves(next.cells);
+    return {
+      state: next,
+      moved: true,
+      slide: res,
+      spawned: { at: sp.at, tile: sp.tile },
+      newHighest: topBorn > state.highest ? topBorn : 0,
+      forgedNow: !state.forged && next.forged
+    };
+  }
+
+  // Mulberry32. state()/restore() let undo and saves rewind the dealer exactly.
+  function makeRng(seed) {
+    var a = seed >>> 0;
+    return {
+      next: function () {
+        a |= 0;
+        a = (a + 0x6D2B79F5) | 0;
+        var t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      },
+      state: function () { return a >>> 0; },
+      restore: function (v) { a = v >>> 0; }
+    };
+  }
+
+  function dateSeed(key) {
+    var p = key.split("-").map(Number);
+    return p[0] * 10000 + p[1] * 100 + p[2];
+  }
+
+  function isDateKey(v) {
+    if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+    var p = v.split("-").map(Number);
+    return p[1] >= 1 && p[1] <= 12 && p[2] >= 1 && p[2] <= 31;
+  }
+
+  function isPlain(v) { return !!v && typeof v === "object" && !Array.isArray(v); }
+
+  function toRanks(cells) { return cells.map(function (t) { return t ? t.rank : 0; }); }
+
+  function fromRanks(ranks) {
+    var seq = 0;
+    var cells = ranks.map(function (rank) {
+      if (!rank) return null;
+      seq += 1;
+      return { id: seq, rank: rank };
+    });
+    return { cells: cells, seq: seq };
+  }
+
+  // A saved position: plain JSON, ranks only (tile ids are rebuilt on load).
+  function snapshotOf(state, rngState) {
+    return {
+      board: toRanks(state.cells), score: state.score, nextRank: state.nextRank,
+      moves: state.moves, merges: state.merges, highest: state.highest, rng: rngState >>> 0
+    };
+  }
+
+  function restoreSnapshot(snap) {
+    var built = fromRanks(snap.board);
+    return {
+      cells: built.cells, score: snap.score, nextRank: snap.nextRank, seq: built.seq,
+      moves: snap.moves, merges: snap.merges, highest: snap.highest,
+      forged: snap.highest >= MAX_RANK, over: !hasMoves(built.cells)
+    };
+  }
+
+  // Returns a clean copy of a snapshot, or null if anything about it is impossible.
+  function validateSnapshot(s) {
+    if (!isPlain(s) || !Array.isArray(s.board) || s.board.length !== CELLS) return null;
+    var tiles = 0;
+    var top = 0;
+    for (var i = 0; i < CELLS; i++) {
+      var v = s.board[i];
+      if (v === 0) continue;
+      if (!isRank(v)) return null;
+      tiles += 1;
+      if (v > top) top = v;
+    }
+    if (!tiles) return null;
+    if (!isCount(s.score) || s.score % 4 !== 0) return null;
+    if (s.nextRank !== 1 && s.nextRank !== 2) return null;
+    if (!isCount(s.moves) || !isCount(s.merges)) return null;
+    if (!isRank(s.highest) || s.highest < top) return null;
+    if (!Number.isInteger(s.rng) || s.rng < 0 || s.rng > 0xFFFFFFFF) return null;
+    return {
+      board: s.board.slice(), score: s.score, nextRank: s.nextRank, moves: s.moves,
+      merges: s.merges, highest: s.highest, rng: s.rng
+    };
+  }
+
+  // Saved run in progress. Anything malformed returns null so the game starts fresh.
+  function validateRun(raw) {
+    if (!isPlain(raw) || raw.v !== 1) return null;
+    if (raw.mode !== "free" && raw.mode !== "daily") return null;
+    if (!isDateKey(raw.runDate)) return null;
+    var current = validateSnapshot(raw.current);
+    if (!current) return null;
+    if (!Number.isInteger(raw.undosLeft) || raw.undosLeft < 0 || raw.undosLeft > UNDO_LIMIT) return null;
+    if (!Array.isArray(raw.undo) || raw.undo.length > UNDO_LIMIT) return null;
+    var undo = [];
+    for (var i = 0; i < raw.undo.length; i++) {
+      var snap = validateSnapshot(raw.undo[i]);
+      if (!snap) return null;
+      undo.push(snap);
+    }
+    return {
+      v: 1, mode: raw.mode, runDate: raw.runDate, current: current, undo: undo,
+      undosLeft: raw.undosLeft,
+      bestAtStart: isCount(raw.bestAtStart) ? raw.bestAtStart : 0,
+      startedAt: typeof raw.startedAt === "number" && isFinite(raw.startedAt) && raw.startedAt >= 0 ? raw.startedAt : 0
+    };
+  }
+
+  function defaultSettings() {
+    return { v: 1, sound: true, how: false, freeBest: 0, freeRank: 0, dailyDate: "", dailyBest: 0, dailyRank: 0, dailyEver: 0, dailyEverRank: 0 };
+  }
+
+  // Settings and bests. Each field is checked on its own; a bad field falls back to its default.
+  function validateSettings(raw) {
+    var out = defaultSettings();
+    if (!isPlain(raw)) return out;
+    if (typeof raw.sound === "boolean") out.sound = raw.sound;
+    if (typeof raw.how === "boolean") out.how = raw.how;
+    ["freeBest", "dailyBest", "dailyEver"].forEach(function (k) { if (isCount(raw[k])) out[k] = raw[k]; });
+    ["freeRank", "dailyRank", "dailyEverRank"].forEach(function (k) { if (isCount(raw[k], MAX_RANK)) out[k] = raw[k]; });
+    if (isDateKey(raw.dailyDate)) out.dailyDate = raw.dailyDate;
+    else { out.dailyBest = 0; out.dailyRank = 0; }
+    return out;
+  }
+
+  var api = {
+    SIZE: SIZE, CELLS: CELLS, MAX_RANK: MAX_RANK, EMBER_CHANCE: EMBER_CHANCE, UNDO_LIMIT: UNDO_LIMIT,
+    NAMES: NAMES, DIR: DIR,
+    valueOf: valueOf, slide: slide, hasMoves: hasMoves, emptyIndexes: emptyIndexes, rollRank: rollRank,
+    spawn: spawn, newRun: newRun, applyMove: applyMove, makeRng: makeRng, dateSeed: dateSeed,
+    isDateKey: isDateKey, toRanks: toRanks, fromRanks: fromRanks, snapshotOf: snapshotOf,
+    restoreSnapshot: restoreSnapshot, validateSnapshot: validateSnapshot, validateRun: validateRun,
+    validateSettings: validateSettings, defaultSettings: defaultSettings
+  };
+  root.RokumonMergeLogic = Object.freeze(api);
+})(typeof globalThis !== "undefined" ? globalThis : this);
+</script>
 
 <script id="game">
 (function () {
   "use strict";
 
-  var TIERS = [
-    { name: "Spark" }, { name: "Ember" }, { name: "Coal" }, { name: "Bloom" },
-    { name: "Ingot" }, { name: "Blank" }, { name: "Tanto" }, { name: "Wakizashi" },
-    { name: "Katana" }, { name: "Odachi" }, { name: "Spirit" }, { name: "Rokumon" }
-  ];
-  var MAX_RANK = 12;
+  var L = window.RokumonMergeLogic;
+  var NAMES = L.NAMES;
+  var MAX_RANK = L.MAX_RANK;
   var STORE = "rokumon-merge-v1";
+  var RUN_STORE = "rokumon-merge-run-v1";
   var GLYPH = ["⬛", "🔴", "🟥", "🟧", "🟧", "🟨", "⬜", "🟦", "🟦", "🟨", "🟧", "🟪", "✨"];
   var SCALE = [392, 440, 494, 523.25, 587.33, 659.25, 698.46, 783.99, 880, 987.77, 1046.5, 1174.66];
+  var DIR_WORDS = ["left", "right", "up", "down"];
+  var KEYMAP = { ArrowLeft: 0, ArrowRight: 1, ArrowUp: 2, ArrowDown: 3, a: 0, A: 0, d: 1, D: 1, w: 2, W: 2, s: 3, S: 3 };
 
-  function valueOf(rank) { return 1 << rank; }
+  function valueOf(rank) { return L.valueOf(rank); }
 
   function crestSvg(withCore) {
     var core = withCore
@@ -571,177 +918,14 @@
 
   function icon(rank) { return ICONS[rank] || ICONS[1]; }
 
-  function lineCoord(dir, i, j) {
-    if (dir === 0) return [i, j];
-    if (dir === 1) return [i, 3 - j];
-    if (dir === 2) return [j, i];
-    return [3 - j, i];
-  }
-
-  function computeMove(cells, dir, seqStart) {
-    var next = new Array(16).fill(null);
-    var slides = [];
-    var vanished = [];
-    var born = [];
-    var moved = false;
-    var gained = 0;
-    var seq = seqStart;
-    var i, j, t, coords, tiles, placed, a, b, rank, tile, idx, fr, fc, r, c, value;
-    for (i = 0; i < 4; i++) {
-      coords = [];
-      for (j = 0; j < 4; j++) coords.push(lineCoord(dir, i, j));
-      tiles = [];
-      for (j = 0; j < 4; j++) {
-        tile = cells[coords[j][0] * 4 + coords[j][1]];
-        if (tile) tiles.push(tile);
-      }
-      placed = [];
-      for (t = 0; t < tiles.length; t++) {
-        a = tiles[t];
-        b = tiles[t + 1];
-        if (b && a.rank === b.rank && a.rank < MAX_RANK) {
-          seq += 1;
-          rank = a.rank + 1;
-          tile = { id: seq, rank: rank };
-          placed.push(tile);
-          r = coords[placed.length - 1][0];
-          c = coords[placed.length - 1][1];
-          slides.push({ id: a.id, r: r, c: c });
-          slides.push({ id: b.id, r: r, c: c });
-          vanished.push(a.id, b.id);
-          value = valueOf(rank);
-          born.push({ id: tile.id, rank: rank, r: r, c: c, value: value });
-          gained += value;
-          t += 1;
-          moved = true;
-        } else {
-          placed.push(a);
-          r = coords[placed.length - 1][0];
-          c = coords[placed.length - 1][1];
-          idx = -1;
-          for (j = 0; j < 16; j++) if (cells[j] && cells[j].id === a.id) idx = j;
-          fr = Math.floor(idx / 4);
-          fc = idx % 4;
-          if (fr !== r || fc !== c) moved = true;
-          slides.push({ id: a.id, r: r, c: c });
-        }
-      }
-      for (j = 0; j < 4; j++) {
-        r = coords[j][0];
-        c = coords[j][1];
-        next[r * 4 + c] = placed[j] || null;
-      }
-    }
-    return { next: next, slides: slides, vanished: vanished, born: born, moved: moved, gained: gained, seq: seq };
-  }
-
-  function hasMoves(cells) {
-    var i, r, c, t, u;
-    for (i = 0; i < 16; i++) if (!cells[i]) return true;
-    for (r = 0; r < 4; r++) {
-      for (c = 0; c < 4; c++) {
-        t = cells[r * 4 + c];
-        if (c < 3) {
-          u = cells[r * 4 + c + 1];
-          if (u && u.rank === t.rank && t.rank < MAX_RANK) return true;
-        }
-        if (r < 3) {
-          u = cells[(r + 1) * 4 + c];
-          if (u && u.rank === t.rank && t.rank < MAX_RANK) return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  function makeRng(seed) {
-    var a = seed >>> 0;
-    return {
-      next: function () {
-        a |= 0;
-        a = (a + 0x6D2B79F5) | 0;
-        var t = Math.imul(a ^ (a >>> 15), 1 | a);
-        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-      },
-      state: function () { return a >>> 0; },
-      restore: function (v) { a = v >>> 0; }
-    };
-  }
-
-  function rollRank(rng) { return rng.next() < 0.12 ? 2 : 1; }
-
-  function pack(ranks) {
-    return ranks.map(function (rank, i) { return rank ? { id: i + 1, rank: rank } : null; });
-  }
-
-  function rowRanks(cells, row) {
-    var out = [];
-    for (var c = 0; c < 4; c++) out.push(cells[row * 4 + c] ? cells[row * 4 + c].rank : 0);
-    return out.join(",");
-  }
-
-  function selfTest() {
-    var fail = [];
-    function eq(name, got, want) {
-      if (got !== want) fail.push(name + " got " + got + " want " + want);
-    }
-    var left = computeMove(pack([1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), 0, 10);
-    eq("pair-gap", rowRanks(left.next, 0), "2,1,0,0");
-    eq("pair-score", String(left.gained), "4");
-    var quad = computeMove(pack([1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), 0, 1);
-    eq("quad-left", rowRanks(quad.next, 0), "2,2,0,0");
-    eq("quad-score", String(quad.gained), "8");
-    var right = computeMove(pack([1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), 1, 1);
-    eq("quad-right", rowRanks(right.next, 0), "0,0,2,2");
-    var stay = computeMove(pack([1, 2, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), 0, 1);
-    eq("no-slide", String(stay.moved), "false");
-    var capped = computeMove(pack([0, 12, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), 0, 1);
-    eq("cap-slide", rowRanks(capped.next, 0), "12,12,0,0");
-    eq("cap-born", String(capped.born.length), "0");
-    var upCells = pack([1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]);
-    var up = computeMove(upCells, 2, 3);
-    eq("up-merge", String(up.next[0] && up.next[0].rank), "2");
-    eq("up-clear", String(up.next[8]), "null");
-    var full = [];
-    var r, c, bit;
-    for (r = 0; r < 4; r++) for (c = 0; c < 4; c++) {
-      bit = (r + c) % 2 === 0 ? 1 : 2;
-      full.push({ id: r * 4 + c + 1, rank: bit });
-    }
-    eq("dead-board", String(hasMoves(full)), "false");
-    eq("open-board", String(hasMoves(pack([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))), "true");
-    var rngA = makeRng(20261110);
-    var rngB = makeRng(20261110);
-    var seq = [];
-    var seqB = [];
-    for (r = 0; r < 6; r++) {
-      seq.push(Math.floor(rngA.next() * 1000));
-      seqB.push(Math.floor(rngB.next() * 1000));
-    }
-    eq("seed", seq.join("."), seqB.join("."));
-    var saved = rngA.state();
-    var n1 = rngA.next();
-    rngA.restore(saved);
-    eq("rewind", String(rngA.next()), String(n1));
-    return fail;
-  }
-
-  var cells = [];
-  var score = 0;
-  var nextRank = 1;
-  var rng = makeRng(1);
-  var seq = 0;
-  var moves = 0;
-  var merges = 0;
-  var highest = 0;
-  var over = false;
-  var forged = false;
+  var state = null;
+  var rng = L.makeRng(1);
   var mode = "free";
   var runDate = "";
   var bestAtStart = 0;
-  var undosLeft = 3;
+  var undosLeft = L.UNDO_LIMIT;
   var undoStack = [];
+  var startedAt = 0;
   var locked = false;
   var pending = null;
   var timer = 0;
@@ -753,8 +937,10 @@
   var confirmAction = null;
   var toastTimer = 0;
   var reportedOver = false;
+  var lastFocus = null;
+  var liveFlip = false;
 
-  var board, tilesEl, scoreEl, bestEl, bestLabel, nextName, nextTile, hintEl, highline, ladder;
+  var app, board, tilesEl, boardDesc, scoreEl, bestEl, bestLabel, nextName, nextTile, hintEl, highline, ladder;
   var undoBtn, newBtn, freeBtn, dailyBtn, soundBtn, soundIcon, how, howClose, result, resultScore, resultSub, recordEl;
   var sharePreview, fallback, shareBtn, resultUndo, againBtn, confirmBox, confirmText, toast, live;
 
@@ -773,29 +959,46 @@
     return Number(parts[2]) + " " + months[Number(parts[1]) - 1];
   }
 
-  function dateSeed(key) {
-    var p = key.split("-").map(Number);
-    return p[0] * 10000 + p[1] * 100 + p[2];
-  }
+  function fmt(n) { return Number(n).toLocaleString("en-US"); }
 
-  function fmt(n) { return n.toLocaleString("en-US"); }
+  // ---- storage -------------------------------------------------------------
 
-  function loadSave() {
-    var base = { v: 1, sound: true, how: false, freeBest: 0, freeRank: 0, dailyDate: "", dailyBest: 0, dailyRank: 0, dailyEver: 0, dailyEverRank: 0 };
+  function readJson(key) {
     try {
-      var raw = localStorage.getItem(STORE);
-      if (!raw) return base;
-      var data = JSON.parse(raw);
-      var k;
-      for (k in base) if (Object.prototype.hasOwnProperty.call(data, k)) base[k] = data[k];
-      return base;
+      var raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
     } catch (err) {
-      return base;
+      return null;
     }
   }
 
-  function writeSave(data) {
-    try { localStorage.setItem(STORE, JSON.stringify(data)); } catch (err) { /* private mode */ }
+  function writeJson(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch (err) { /* storage blocked or full */ }
+  }
+
+  function dropKey(key) {
+    try { localStorage.removeItem(key); } catch (err) { /* storage blocked */ }
+  }
+
+  function loadSettings() { return L.validateSettings(readJson(STORE)); }
+
+  function saveRun() {
+    if (!state) return;
+    writeJson(RUN_STORE, {
+      v: 1, mode: mode, runDate: runDate, bestAtStart: bestAtStart, undosLeft: undosLeft,
+      startedAt: startedAt, current: L.snapshotOf(state, rng.state()), undo: undoStack
+    });
+  }
+
+  function loadRun() {
+    var raw = readJson(RUN_STORE);
+    if (raw == null) {
+      dropKey(RUN_STORE);
+      return null;
+    }
+    var run = L.validateRun(raw);
+    if (!run) dropKey(RUN_STORE);
+    return run;
   }
 
   function currentBest(save) {
@@ -804,40 +1007,73 @@
   }
 
   function commitBest() {
-    var save = loadSave();
+    var save = loadSettings();
+    var score = state.score;
+    var highest = state.highest;
     if (mode === "daily") {
-      if (save.dailyDate !== runDate) {
+      // A run carried over from an earlier date must not wipe a later day's best.
+      if (save.dailyDate < runDate) {
         save.dailyDate = runDate;
         save.dailyBest = 0;
         save.dailyRank = 0;
       }
-      if (score > save.dailyBest) save.dailyBest = score;
-      if (highest > save.dailyRank) save.dailyRank = highest;
+      if (save.dailyDate === runDate) {
+        if (score > save.dailyBest) save.dailyBest = score;
+        if (highest > save.dailyRank) save.dailyRank = highest;
+      }
       if (score > save.dailyEver) save.dailyEver = score;
       if (highest > save.dailyEverRank) save.dailyEverRank = highest;
     } else {
       if (score > save.freeBest) save.freeBest = score;
       if (highest > save.freeRank) save.freeRank = highest;
     }
-    writeSave(save);
+    writeJson(STORE, save);
     return save;
   }
+
+  // ---- hub bridge ------------------------------------------------------------
+  // Uses window.Hub when the page has one (for example /hub-bridge.js). Otherwise,
+  // when framed, it posts the same v1 envelope that hub-bridge.js sends. Opened on
+  // its own, every call is a silent no-op.
+
+  var EMBEDDED = (function () {
+    try { return window.parent !== window; } catch (err) { return true; }
+  })();
+
+  function post(payload) {
+    if (!EMBEDDED) return;
+    try { window.parent.postMessage(payload, window.location.origin); } catch (err) { /* opaque origin or no parent */ }
+  }
+
+  var BUILTIN_HUB = {
+    ready: function () { post({ type: "hub:ready", version: 1 }); },
+    score: function (score) { post({ type: "hub:score", score: score }); },
+    gameOver: function (score, durationMs) { post({ type: "hub:gameover", score: score, durationMs: durationMs }); },
+    event: function (name, data) { post({ type: "hub:event", version: 1, name: name, data: data }); }
+  };
 
   function hub(name) {
     var args = Array.prototype.slice.call(arguments, 1);
     try {
-      var host = window.Hub;
-      if (host && typeof host[name] === "function") host[name].apply(host, args);
-    } catch (err) { /* host optional */ }
+      var host = window.Hub && typeof window.Hub[name] === "function" ? window.Hub : BUILTIN_HUB;
+      host[name].apply(host, args);
+    } catch (err) { /* the bridge is never load-bearing */ }
   }
 
+  // ---- sound -----------------------------------------------------------------
+
   function audio() {
-    if (!audioCtx) audioCtx = new AudioContext();
+    if (!audioCtx) {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) throw new Error("no audio");
+      audioCtx = new Ctx();
+    }
     if (audioCtx.state === "suspended") audioCtx.resume();
     return audioCtx;
   }
 
   function unlockAudio() {
+    if (!soundOn) return;
     try { audio(); } catch (err) { /* ignore */ }
   }
 
@@ -882,30 +1118,16 @@
 
   function paintSound() {
     soundBtn.setAttribute("aria-pressed", soundOn ? "true" : "false");
-    soundBtn.setAttribute("aria-label", soundOn ? "Sound on" : "Sound off");
     soundIcon.innerHTML = soundOn
       ? '<path d="M4 10h4l5-4v12l-5-4H4z"/><path d="M16 9a4 4 0 0 1 0 6"/><path d="M18.5 7a7 7 0 0 1 0 10"/>'
       : '<path d="M4 10h4l5-4v12l-5-4H4z"/><path d="M17 10l4 4M21 10l-4 4"/>';
   }
 
-  function emptyIndexes(list) {
-    var out = [];
-    for (var i = 0; i < 16; i++) if (!list[i]) out.push(i);
-    return out;
-  }
+  // ---- rendering -------------------------------------------------------------
 
-  function snapshot() {
-    return {
-      cells: cells.map(function (t) { return t ? { id: t.id, rank: t.rank } : null; }),
-      score: score,
-      nextRank: nextRank,
-      rng: rng.state(),
-      seq: seq,
-      moves: moves,
-      merges: merges,
-      highest: highest,
-      forged: forged
-    };
+  function announce(text) {
+    liveFlip = !liveFlip;
+    live.textContent = text + (liveFlip ? "" : " ");
   }
 
   function addTile(tile, r, c, kind) {
@@ -915,47 +1137,56 @@
     el.dataset.rank = String(tile.rank);
     el.style.setProperty("--x", String(c));
     el.style.setProperty("--y", String(r));
-    var tier = TIERS[tile.rank - 1];
-    el.innerHTML = '<div class="face">' + icon(tile.rank) + "<b>" + tier.name + "</b><em>" + valueOf(tile.rank) + "</em></div>";
-    el.setAttribute("role", "img");
-    el.setAttribute("aria-label", tier.name + ", " + valueOf(tile.rank));
+    el.innerHTML = '<div class="face">' + icon(tile.rank) + "<b>" + NAMES[tile.rank - 1] + "</b><em>" + valueOf(tile.rank) + "</em></div>";
     tilesEl.appendChild(el);
   }
 
   function rebuild(kind) {
     tilesEl.replaceChildren();
-    for (var i = 0; i < 16; i++) {
-      if (!cells[i]) continue;
-      addTile(cells[i], Math.floor(i / 4), i % 4, kind || "");
+    for (var i = 0; i < L.CELLS; i++) {
+      if (!state.cells[i]) continue;
+      addTile(state.cells[i], Math.floor(i / 4), i % 4, kind || "");
     }
   }
 
+  function describeBoard() {
+    var rows = [];
+    for (var r = 0; r < 4; r++) {
+      var row = [];
+      for (var c = 0; c < 4; c++) {
+        var t = state.cells[r * 4 + c];
+        row.push(t ? NAMES[t.rank - 1] + " " + valueOf(t.rank) : "empty");
+      }
+      rows.push("Row " + (r + 1) + ": " + row.join(", ") + ".");
+    }
+    boardDesc.textContent = rows.join(" ");
+  }
+
   function updateHud() {
-    var save = loadSave();
-    scoreEl.textContent = fmt(score);
+    var save = loadSettings();
+    scoreEl.textContent = fmt(state.score);
     bestEl.textContent = fmt(currentBest(save));
     bestLabel.textContent = mode === "daily" ? "Today" : "Best";
-    var tier = TIERS[nextRank - 1];
-    nextName.textContent = tier.name;
-    nextTile.dataset.rank = String(nextRank);
-    nextTile.innerHTML = icon(nextRank);
+    nextName.textContent = NAMES[state.nextRank - 1];
+    nextTile.dataset.rank = String(state.nextRank);
+    nextTile.innerHTML = icon(state.nextRank);
     hintEl.textContent = mode === "daily"
       ? "Daily forge · " + prettyDate(runDate) + " · same sparks for everyone."
       : "Free forge · matching metals become the next blade.";
-    var name = highest ? TIERS[highest - 1].name : "—";
-    highline.innerHTML = forged
+    var name = state.highest ? NAMES[state.highest - 1] : "—";
+    highline.innerHTML = state.forged
       ? "Six gates open · <strong>Rokumon</strong>"
       : "Highest · <strong>" + name + "</strong>";
     ladder.replaceChildren();
-    for (var rank = 1; rank <= 12; rank++) {
+    for (var rank = 1; rank <= MAX_RANK; rank++) {
       var pip = document.createElement("i");
       var cls = "";
-      if (rank < highest) cls = "on";
-      if (rank === highest) cls = highest === 12 ? "open" : "now";
+      if (rank < state.highest) cls = "on";
+      if (rank === state.highest) cls = state.highest === MAX_RANK ? "open" : "now";
       pip.className = cls;
       ladder.appendChild(pip);
     }
-    board.classList.toggle("hot", highest >= 9);
+    board.classList.toggle("hot", state.highest >= 9);
     undoBtn.textContent = "Undo · " + undosLeft;
     undoBtn.disabled = locked || undosLeft <= 0 || undoStack.length === 0;
     newBtn.disabled = locked;
@@ -965,27 +1196,13 @@
     dailyBtn.setAttribute("aria-pressed", mode === "daily" ? "true" : "false");
   }
 
-  function spawnInto(list, animate) {
-    var empties = emptyIndexes(list);
-    if (!empties.length) return null;
-    var at = empties[Math.floor(rng.next() * empties.length)];
-    var rank = nextRank;
-    nextRank = rollRank(rng);
-    seq += 1;
-    var tile = { id: seq, rank: rank };
-    list[at] = tile;
-    if (rank > highest) highest = rank;
-    if (animate) addTile(tile, Math.floor(at / 4), at % 4, "new");
-    return tile;
-  }
-
   function shareText() {
     var head = mode === "daily" ? "Rokumon Merge " + runDate : "Rokumon Merge · Free forge";
-    var lines = [head, fmt(score) + " · " + (highest ? TIERS[highest - 1].name : "Empty")];
+    var lines = [head, fmt(state.score) + " · " + (state.highest ? NAMES[state.highest - 1] : "Empty")];
     for (var r = 0; r < 4; r++) {
       var row = "";
       for (var c = 0; c < 4; c++) {
-        var t = cells[r * 4 + c];
+        var t = state.cells[r * 4 + c];
         row += t ? GLYPH[t.rank] : GLYPH[0];
       }
       lines.push(row);
@@ -1000,96 +1217,141 @@
     toastTimer = window.setTimeout(function () { toast.hidden = true; }, 2200);
   }
 
+  // ---- dialogs ---------------------------------------------------------------
+
+  function anyDialog() { return !how.hidden || !result.hidden || !confirmBox.hidden; }
+
+  function openDialog(el, focusEl) {
+    if (!anyDialog()) lastFocus = document.activeElement;
+    el.hidden = false;
+    app.inert = true;
+    (focusEl || el.querySelector("button")).focus();
+  }
+
+  function closeDialog(el) {
+    el.hidden = true;
+    if (anyDialog()) return;
+    app.inert = false;
+    var target = lastFocus && document.body.contains(lastFocus) && !lastFocus.disabled && lastFocus !== document.body ? lastFocus : board;
+    lastFocus = null;
+    try { target.focus({ preventScroll: true }); } catch (err) { board.focus(); }
+  }
+
   function showResult() {
-    var tier = TIERS[Math.max(highest, 1) - 1];
-    resultScore.textContent = fmt(score);
-    resultSub.textContent = moves + " moves · " + merges + " merges · highest " + (highest ? tier.name : "—");
-    recordEl.hidden = !(score > bestAtStart && score > 0);
+    var tier = NAMES[Math.max(state.highest, 1) - 1];
+    resultScore.textContent = fmt(state.score);
+    resultSub.textContent = state.moves + " moves · " + state.merges + " merges · highest " + (state.highest ? tier : "—");
+    recordEl.hidden = !(state.score > bestAtStart && state.score > 0);
     sharePreview.textContent = shareText();
     fallback.hidden = true;
     resultUndo.hidden = undosLeft <= 0 || undoStack.length === 0;
     resultUndo.textContent = "Undo last slide · " + undosLeft;
-    result.hidden = false;
     shareBtn.textContent = "Share result";
-    shareBtn.focus();
+    openDialog(result, shareBtn);
   }
+
+  function askConfirm(text, action) {
+    confirmText.textContent = text;
+    confirmAction = action;
+    openDialog(confirmBox, $("confirm-no"));
+  }
+
+  function closeConfirm(ok) {
+    var action = confirmAction;
+    confirmAction = null;
+    closeDialog(confirmBox);
+    if (ok && action) action();
+  }
+
+  function closeHow() {
+    var save = loadSettings();
+    save.how = true;
+    writeJson(STORE, save);
+    closeDialog(how);
+    unlockAudio();
+    if (state && state.over && result.hidden) showResult();
+  }
+
+  function openHow(first) {
+    howClose.textContent = first ? "Begin the forge" : "Close";
+    openDialog(how, howClose);
+  }
+
+  // ---- game flow -------------------------------------------------------------
 
   function endRun() {
     if (reportedOver) return;
-    over = true;
     pending = null;
     reportedOver = true;
     playOver();
     commitBest();
+    saveRun();
     showResult();
-    hub("score", score);
+    hub("score", state.score);
     hub("event", "run-ended", {
-      score: score,
-      bestRank: highest,
-      value: highest ? valueOf(highest) : 0,
+      score: state.score,
+      bestRank: state.highest,
+      value: state.highest ? valueOf(state.highest) : 0,
       daily: mode === "daily",
-      moves: moves,
-      merges: merges
+      moves: state.moves,
+      merges: state.merges
     });
-    hub("gameOver", score, 0);
-    live.textContent = "Forge cooled. Score " + fmt(score) + ".";
+    hub("gameOver", state.score, Math.max(0, Date.now() - startedAt));
+    announce("Forge cooled. No moves left. Final score " + fmt(state.score) + ", highest " + (state.highest ? NAMES[state.highest - 1] : "none") + ".");
   }
 
-  function finishMove(result) {
-    var b, el, maxBorn, before;
-    cells = result.next;
-    seq = result.seq;
-    for (b = 0; b < result.vanished.length; b++) {
-      el = tilesEl.querySelector('[data-id="' + result.vanished[b] + '"]');
+  function finishMove(out) {
+    var b, el, born, maxBorn = 0;
+    var res = out.slide;
+    for (b = 0; b < res.vanished.length; b++) {
+      el = tilesEl.querySelector('[data-id="' + res.vanished[b] + '"]');
       if (el) el.remove();
     }
-    before = highest;
-    maxBorn = 0;
-    for (b = 0; b < result.born.length; b++) {
-      addTile(result.born[b], result.born[b].r, result.born[b].c, "merge");
-      if (result.born[b].rank > highest) highest = result.born[b].rank;
-      if (result.born[b].rank > maxBorn) maxBorn = result.born[b].rank;
+    var forged = [];
+    for (b = 0; b < res.born.length; b++) {
+      born = res.born[b];
+      addTile(born, born.r, born.c, "merge");
+      if (born.rank > maxBorn) maxBorn = born.rank;
+      forged.push(NAMES[born.rank - 1]);
       if (!REDUCE) {
         var floater = document.createElement("div");
         floater.className = "floater";
-        floater.style.setProperty("--x", String(result.born[b].c));
-        floater.style.setProperty("--y", String(result.born[b].r));
-        floater.textContent = "+" + result.born[b].value;
+        floater.style.setProperty("--x", String(born.c));
+        floater.style.setProperty("--y", String(born.r));
+        floater.textContent = "+" + born.value;
         tilesEl.appendChild(floater);
         window.setTimeout(function (node) { return function () { node.remove(); }; }(floater), 650);
       }
     }
-    score += result.gained;
-    merges += result.born.length;
-    moves += 1;
-    spawnInto(cells, true);
-    if (!forged && highest >= 12 && before < 12) {
-      forged = true;
-      showToast("The six gates open");
-    }
-    if (maxBorn >= 9) {
+    var sp = out.spawned;
+    addTile(sp.tile, Math.floor(sp.at / 4), sp.at % 4, "new");
+    if (out.forgedNow) showToast("The six gates open");
+    if (maxBorn >= 9 && !REDUCE) {
       board.classList.remove("shake");
       void board.offsetWidth;
       board.classList.add("shake");
     }
-    if (result.born.length) playMerge(maxBorn, result.born.length);
+    if (res.born.length) playMerge(maxBorn, res.born.length);
     commitBest();
-    if (highest > before && maxBorn > 0) {
+    if (out.newHighest) {
       hub("event", "highest-tile", {
-        rank: highest,
-        value: valueOf(highest),
-        name: TIERS[highest - 1].name,
-        score: score,
+        rank: out.newHighest,
+        value: valueOf(out.newHighest),
+        name: NAMES[out.newHighest - 1],
+        score: state.score,
         daily: mode === "daily"
       });
     }
-    hub("score", score);
+    hub("score", state.score);
     locked = false;
     updateHud();
-    live.textContent = "Score " + fmt(score) + ". Next " + TIERS[nextRank - 1].name + ".";
-    if (!hasMoves(cells)) {
+    describeBoard();
+    var msg = forged.length ? "Forged " + forged.join(", ") + ", plus " + fmt(res.gained) + ". " : "Slid " + DIR_WORDS[out.dir] + ". ";
+    if (out.newHighest) msg += "New highest: " + NAMES[out.newHighest - 1] + ". ";
+    if (out.forgedNow) msg += "The six gates open. ";
+    announce(msg + "Score " + fmt(state.score) + ".");
+    if (state.over) {
       endRun();
-      updateHud();
       return;
     }
     if (pending != null) {
@@ -1100,121 +1362,123 @@
   }
 
   function beginMove(dir) {
-    if (over || locked) return;
-    var result = computeMove(cells, dir, seq);
-    if (!result.moved) {
+    if (!state || state.over || locked) return;
+    var before = rng.state();
+    var out = L.applyMove(state, dir, rng.next);
+    if (!out.moved) {
       playReject();
       pending = null;
+      announce("Nothing slides " + DIR_WORDS[dir] + ".");
       return;
     }
-    undoStack.push(snapshot());
-    if (undoStack.length > 40) undoStack.shift();
+    out.dir = dir;
+    undoStack.push(L.snapshotOf(state, before));
+    if (undoStack.length > L.UNDO_LIMIT) undoStack.shift();
+    state = out.state;
+    saveRun();
     locked = true;
     updateHud();
     playMove();
     var s, el;
-    for (s = 0; s < result.slides.length; s++) {
-      el = tilesEl.querySelector('[data-id="' + result.slides[s].id + '"]');
+    for (s = 0; s < out.slide.slides.length; s++) {
+      el = tilesEl.querySelector('[data-id="' + out.slide.slides[s].id + '"]');
       if (!el) continue;
-      el.style.setProperty("--x", String(result.slides[s].c));
-      el.style.setProperty("--y", String(result.slides[s].r));
+      el.style.setProperty("--x", String(out.slide.slides[s].c));
+      el.style.setProperty("--y", String(out.slide.slides[s].r));
     }
     window.clearTimeout(timer);
-    timer = window.setTimeout(function () { finishMove(result); }, ANIM);
+    timer = window.setTimeout(function () { finishMove(out); }, ANIM);
   }
 
   function requestMove(dir) {
-    if (!how.hidden || !confirmBox.hidden || !result.hidden) return;
+    if (anyDialog()) return;
     unlockAudio();
     if (locked) { pending = dir; return; }
     beginMove(dir);
+  }
+
+  function settle() {
+    tilesEl.classList.add("no-anim");
+    requestAnimationFrame(function () { tilesEl.classList.remove("no-anim"); });
   }
 
   function startRun() {
     window.clearTimeout(timer);
     pending = null;
     locked = false;
-    over = false;
     reportedOver = false;
-    forged = false;
-    score = 0;
-    moves = 0;
-    merges = 0;
-    highest = 0;
-    seq = 0;
-    undosLeft = 3;
+    undosLeft = L.UNDO_LIMIT;
     undoStack = [];
     runDate = dateKey(new Date());
-    var save = loadSave();
+    startedAt = Date.now();
+    var save = loadSettings();
     if (mode === "daily") {
       if (save.dailyDate !== runDate) {
         save.dailyDate = runDate;
         save.dailyBest = 0;
         save.dailyRank = 0;
-        writeSave(save);
+        writeJson(STORE, save);
       }
       bestAtStart = save.dailyBest;
-      rng = makeRng(dateSeed(runDate));
+      rng = L.makeRng(L.dateSeed(runDate));
     } else {
       bestAtStart = save.freeBest;
       var seed = (Date.now() ^ Math.floor(Math.random() * 0x100000000)) >>> 0;
-      rng = makeRng(seed || 1);
+      rng = L.makeRng(seed || 1);
     }
-    cells = new Array(16).fill(null);
-    nextRank = rollRank(rng);
-    spawnInto(cells, false);
-    spawnInto(cells, false);
-    result.hidden = true;
-    confirmBox.hidden = true;
-    tilesEl.classList.add("no-anim");
+    state = L.newRun(rng.next);
+    saveRun();
+    if (!result.hidden) closeDialog(result);
+    if (!confirmBox.hidden) closeDialog(confirmBox);
+    settle();
     rebuild("new");
-    requestAnimationFrame(function () { tilesEl.classList.remove("no-anim"); });
     updateHud();
+    describeBoard();
     hub("ready");
-    live.textContent = (mode === "daily" ? "Daily forge ready." : "Free forge ready.");
+    announce((mode === "daily" ? "Daily forge ready. " : "Free forge ready. ") + "Score 0.");
+  }
+
+  function restoreRun(run) {
+    mode = run.mode;
+    runDate = run.runDate;
+    bestAtStart = run.bestAtStart;
+    undosLeft = run.undosLeft;
+    undoStack = run.undo;
+    startedAt = run.startedAt || Date.now();
+    state = L.restoreSnapshot(run.current);
+    rng = L.makeRng(0);
+    rng.restore(run.current.rng);
+    reportedOver = state.over;
+    settle();
+    rebuild("");
+    updateHud();
+    describeBoard();
+    hub("ready");
+    hub("score", state.score);
+    announce("Forge restored. Score " + fmt(state.score) + ".");
   }
 
   function undo() {
     if (locked || undosLeft <= 0 || !undoStack.length) return;
     var snap = undoStack.pop();
     undosLeft -= 1;
-    cells = snap.cells.map(function (t) { return t ? { id: t.id, rank: t.rank } : null; });
-    score = snap.score;
-    nextRank = snap.nextRank;
+    state = L.restoreSnapshot(snap);
     rng.restore(snap.rng);
-    seq = snap.seq;
-    moves = snap.moves;
-    merges = snap.merges;
-    highest = snap.highest;
-    forged = snap.forged;
-    over = false;
     reportedOver = false;
-    result.hidden = true;
-    tilesEl.classList.add("no-anim");
+    saveRun();
+    settle();
     rebuild("");
-    requestAnimationFrame(function () { tilesEl.classList.remove("no-anim"); });
     updateHud();
-    hub("score", score);
+    describeBoard();
+    if (!result.hidden) closeDialog(result);
+    hub("score", state.score);
     playUndo();
-    live.textContent = "Undone. Score " + fmt(score) + ". " + undosLeft + " undos left.";
-  }
-
-  function askConfirm(text, action) {
-    confirmText.textContent = text;
-    confirmAction = action;
-    confirmBox.hidden = false;
-  }
-
-  function closeConfirm(ok) {
-    confirmBox.hidden = true;
-    var action = confirmAction;
-    confirmAction = null;
-    if (ok && action) action();
+    announce("Undone. Score " + fmt(state.score) + ". " + undosLeft + (undosLeft === 1 ? " undo" : " undos") + " left.");
   }
 
   function requestNew() {
     if (locked) return;
-    if (moves > 0 && !over) {
+    if (state.moves > 0 && !state.over) {
       askConfirm("The board resets. Your best score stays on this device.", startRun);
       return;
     }
@@ -1224,24 +1488,11 @@
   function requestMode(next) {
     if (locked || next === mode) return;
     var go = function () { mode = next; startRun(); };
-    if (moves > 0 && !over) {
+    if (state.moves > 0 && !state.over) {
       askConfirm(next === "daily" ? "Leave this forge for today’s shared board?" : "Leave this forge for free play?", go);
       return;
     }
     go();
-  }
-
-  function closeHow() {
-    how.hidden = true;
-    var save = loadSave();
-    save.how = true;
-    writeSave(save);
-    unlockAudio();
-  }
-
-  function openHow(first) {
-    howClose.textContent = first ? "Begin the forge" : "Close";
-    how.hidden = false;
   }
 
   async function doShare() {
@@ -1257,6 +1508,7 @@
     try {
       await navigator.clipboard.writeText(text);
       shareBtn.textContent = "Copied";
+      announce("Result copied.");
       window.setTimeout(function () { shareBtn.textContent = "Share result"; }, 1600);
     } catch (err) {
       fallback.hidden = false;
@@ -1276,32 +1528,47 @@
       tile.dataset.rank = String(ranks[i]);
       tile.innerHTML = icon(ranks[i]);
       var cap = document.createElement("figcaption");
-      cap.textContent = TIERS[ranks[i] - 1].name;
+      cap.textContent = NAMES[ranks[i] - 1];
       fig.append(tile, cap);
       host.append(fig);
     }
   }
 
   function onKey(e) {
+    if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === "Escape") {
-      if (!how.hidden) closeHow();
-      else if (!confirmBox.hidden) closeConfirm(false);
+      if (!confirmBox.hidden) closeConfirm(false);
+      else if (!how.hidden) closeHow();
       return;
     }
-    var map = { ArrowLeft: 0, ArrowRight: 1, ArrowUp: 2, ArrowDown: 3, a: 0, A: 0, d: 1, D: 1, w: 2, W: 2, s: 3, S: 3 };
-    if (!Object.prototype.hasOwnProperty.call(map, e.key)) return;
+    if (anyDialog()) return;
+    var t = e.target;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+    if (e.key === "u" || e.key === "U") {
+      e.preventDefault();
+      unlockAudio();
+      undo();
+      return;
+    }
+    if (!Object.prototype.hasOwnProperty.call(KEYMAP, e.key)) return;
     e.preventDefault();
-    requestMove(map[e.key]);
+    requestMove(KEYMAP[e.key]);
+  }
+
+  function setMotion(reduce) {
+    REDUCE = reduce;
+    ANIM = REDUCE ? 0 : 150;
   }
 
   function boot() {
-    var failures = selfTest();
-    if (failures.length) console.error("Rokumon rules self-test failed: " + failures.join("; "));
-    REDUCE = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    ANIM = REDUCE ? 0 : 150;
+    var mq = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
+    setMotion(!!(mq && mq.matches));
+    if (mq && mq.addEventListener) mq.addEventListener("change", function (e) { setMotion(e.matches); });
 
+    app = $("app");
     board = $("board");
     tilesEl = $("tiles");
+    boardDesc = $("board-desc");
     scoreEl = $("score");
     bestEl = $("best");
     bestLabel = $("best-label");
@@ -1333,22 +1600,23 @@
     live = $("live");
 
     var cellsHost = $("cells");
-    for (var i = 0; i < 16; i++) {
+    for (var i = 0; i < L.CELLS; i++) {
       var cell = document.createElement("div");
       cell.className = "cell";
       cellsHost.appendChild(cell);
     }
     fillSamples();
 
-    var save = loadSave();
-    soundOn = save.sound !== false;
+    var save = loadSettings();
+    writeJson(STORE, save);
+    soundOn = save.sound;
     paintSound();
 
     var pointer = null;
     board.addEventListener("pointerdown", function (e) {
       if (e.button != null && e.button !== 0) return;
       pointer = { id: e.pointerId, x: e.clientX, y: e.clientY };
-      if (board.setPointerCapture) board.setPointerCapture(e.pointerId);
+      try { board.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
     });
     board.addEventListener("pointerup", function (e) {
       if (!pointer || pointer.id !== e.pointerId) return;
@@ -1362,18 +1630,20 @@
     board.addEventListener("pointercancel", function () { pointer = null; });
 
     window.addEventListener("keydown", onKey);
+    Array.prototype.forEach.call(document.querySelectorAll(".pad button"), function (btn) {
+      btn.addEventListener("click", function () { requestMove(Number(btn.dataset.dir)); });
+    });
     undoBtn.addEventListener("click", function () { unlockAudio(); undo(); });
     newBtn.addEventListener("click", function () { unlockAudio(); requestNew(); });
     freeBtn.addEventListener("click", function () { unlockAudio(); requestMode("free"); });
     dailyBtn.addEventListener("click", function () { unlockAudio(); requestMode("daily"); });
     soundBtn.addEventListener("click", function () {
-      unlockAudio();
       soundOn = !soundOn;
-      var data = loadSave();
+      var data = loadSettings();
       data.sound = soundOn;
-      writeSave(data);
+      writeJson(STORE, data);
       paintSound();
-      if (soundOn) playMove();
+      if (soundOn) { unlockAudio(); playMove(); }
     });
     $("info").addEventListener("click", function () { openHow(false); });
     howClose.addEventListener("click", closeHow);
@@ -1384,9 +1654,11 @@
     $("confirm-no").addEventListener("click", function () { closeConfirm(false); });
     $("confirm-yes").addEventListener("click", function () { closeConfirm(true); });
 
-    startRun();
+    var run = loadRun();
+    if (run) restoreRun(run);
+    else startRun();
     if (!save.how) openHow(true);
-    document.body.tabIndex = -1;
+    else if (state.over) showResult();
   }
 
   if (typeof document !== "undefined") boot();
