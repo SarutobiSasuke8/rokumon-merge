@@ -1,0 +1,17 @@
+{
+  "name": "rokumon-merge",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Dev-only checks for Rokumon Merge. The game itself is index.html and needs none of this.",
+  "license": "UNLICENSED",
+  "scripts": {
+    "test": "node --test \"test/*.test.js\"",
+    "smoke": "node --test --test-concurrency=1 \"smoke/*.test.js\""
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "playwright": "1.64.0"
+  }
+}
